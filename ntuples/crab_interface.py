@@ -16,23 +16,23 @@ def get_options():
 
 #Mapping of sample type to dataset: this will need to be updated if moving to new geometry (new datasets)
 sampleDict = {
-  "electron_0PU":"/SingleE_FlatPt-2to100/PhaseIIMTDTDRAutumn18DR-NoPU_103X_upgrade2023_realistic_v2-v1/FEVT",
-  "electron_200PU":"/SingleE_FlatPt-2to100/PhaseIIMTDTDRAutumn18DR-PU200_103X_upgrade2023_realistic_v2-v1/FEVT",
-  "neutrino_200PU":"/NeutrinoGun_E_10GeV/PhaseIIMTDTDRAutumn18DR-PU200_103X_upgrade2023_realistic_v2-v1/FEVT"
+  #"electron_0PU":"/SingleE_FlatPt-2to100/PhaseIIMTDTDRAutumn18DR-NoPU_103X_upgrade2023_realistic_v2-v1/FEVT",
+  "electron_200PU":"/SingleElectron_PT2to200/Phase2HLTTDRSummer20ReRECOMiniAOD-PU200_111X_mcRun4_realistic_T15_v1_ext2-v1/FEVT",
+  "neutrino_200PU":"/MinBias_TuneCP5_14TeV-pythia8/Phase2HLTTDRSummer20ReRECOMiniAOD-PU200_111X_mcRun4_realistic_T15_v1-v1/FEVT"
 }
 
 #Total number of files for each sample: use if want all files to be processes
 totalFilesDict = {
-  "electron_0PU":22,
-  "electron_200PU":400,
-  "neutrino_200PU":2599
+  #"electron_0PU":22,
+  "electron_200PU":630,
+  "neutrino_200PU":5646
 }
 
 #Output dataset tag
 datasetTagDict = {
-  "electron_0PU":"SingleElectron_FlatPt-2to100_0PU_hgcal_l1t_v9",
-  "electron_200PU":"SingleElectron_FlatPt-2to100_0PU_hgcal_l1t_v9",
-  "neutrino_200PU":"SingleNeutrino_200PU_hgcal_l1t_v9"
+  #"electron_0PU":"SingleElectron_FlatPt-2to100_0PU_hgcal_l1t_v9",
+  "electron_200PU":"SingleElectron_FlatPt-2to100_0PU_hgcal_l1t_v11",
+  "neutrino_200PU":"SingleNeutrino_200PU_hgcal_l1t_v11"
 }
 
 # Catch: check using available sample type
@@ -62,13 +62,13 @@ if opt.mode == "sub":
   f_sub = open("%s"%f_sub_name, "w+")
   f_sub.write("from CRABClient.UserUtilities import config\n")
   f_sub.write("config = config()\n\n")
-  f_sub.write("config.Debug.scheddName = \'crab3@vocms0198.cern.ch\'\n\n")
+  #f_sub.write("config.Debug.scheddName = \'crab3@vocms0198.cern.ch\'\n\n")
   f_sub.write("config.General.requestName = \'%s\'\n"%opt.sampleType)
   f_sub.write("config.General.workArea = \'crab_area\'\n")
   f_sub.write("config.General.transferOutputs = True\n")
   f_sub.write("config.General.transferLogs = True\n\n")
   f_sub.write("config.JobType.pluginName = \'Analysis\'\n")
-  f_sub.write("config.JobType.psetName = \'hgcal_l1t_ntupliser_v9_cfg.py\'\n")
+  f_sub.write("config.JobType.psetName = \'hgcal_l1t_ntupliser_extra_vars_cfg.py\'\n")
   f_sub.write("config.JobType.maxMemoryMB = 2500\n\n")
   f_sub.write("config.Data.inputDataset = \'%s\'\n"%sampleDict[opt.sampleType])
   f_sub.write("config.Data.inputDBS = \'global\'\n")
@@ -159,7 +159,26 @@ elif opt.mode == "extract":
     extract = input(" --> Only use this mode when all crab jobs have finished. Have they finished [yes=1,no=0]:")
     if extract:
       print " --> Extracting ntuples for submission: %s"%opt.sampleType
-      #Crab only allows user to extract 500 ntuples at a time: therefore if N_process > 500 do multiple times
+
+      #Check if path to place output directory exists
+      if opt.outputPath == "cwd": outputPath = os.environ['PWD']
+      else: 
+        #Check if path exists
+        if os.path.isdir( opt.outputPath ): outputPath = opt.outputPath
+        else:
+          print " --> [ERROR] path %s does not exist. Ntuples will remain in crab_area/crab_%s/results"%(opt.outputPath,opt.sampleType)
+          print "~~~~~~~~~~~~~~~~~~~~~ EXTRACTION (END) ~~~~~~~~~~~~~~~~~~~~~"  
+          sys.exit(1)
+      # Check if actual directory to move ntuples to already exists
+      if os.path.isdir("%s/%s"%(outputPath,opt.sampleType)):
+        move = input("Output directory already exists. Do you want to move ntuples anyway [yes=1,no=0]:")
+        if not move:
+          print "Ntuples will remain in crab_area/crab_%s/results"%opt.sampleType
+      # if not then make directory for moving later
+      else:
+        os.system("mkdir %s/%s"%(outputPath,opt.sampleType))
+
+      #read files from T2. Crab only allows user to extract 500 ntuples at a time: therefore if N_process > 500 do multiple times
       if N_process/500 > 0:
         # FIXME: this should be parallelized as takes a long time for a lot of samples!
         for jobblock in range(0,N_process/500+1):
@@ -171,38 +190,21 @@ elif opt.mode == "extract":
             for jobid in range(1,501): jobids += "%g,"%(500*jobblock+jobid)
           jobids = jobids[:-1] #remove last comma
           os.system("crab getoutput -d crab_area/crab_%s/ --jobids %s\n"%(opt.sampleType,jobids))
+          print " --> Moving ntuples to %s/%s"%(outputPath,opt.sampleType)
+          #If no ntuples to receive then leave
+          if len(os.listdir("crab_area/crab_%s/results/"%opt.sampleType))==0:
+            print " --> No ntuples in folder. Leaving..."
+            print "~~~~~~~~~~~~~~~~~~~~~ EXTRACTION (END) ~~~~~~~~~~~~~~~~~~~~~"  
+            sys.exit(1) 
+          else: os.system("mv crab_area/crab_%s/results/ntuple*.root %s/%s"%(opt.sampleType,outputPath,opt.sampleType))
       else: 
         os.system("crab getoutput -d crab_area/crab_%s/"%opt.sampleType)
-
-      #If no ntuples to receive then leave
-      if not os.path.exists("crab_area/crab_%s/results/ntuple_1.root"%opt.sampleType):
-        print " --> No ntuples in folder. Leaving..."
-        print "~~~~~~~~~~~~~~~~~~~~~ EXTRACTION (END) ~~~~~~~~~~~~~~~~~~~~~"  
-        sys.exit(1) 
-
-      #Check if path to place output directory exists
-      if opt.outputPath == "cwd": outputPath = os.environ['PWD']
-      else: 
-        #Check if path exists
-        if os.path.isdir( opt.outputPath ): outputPath = opt.outputPath
-        else:
-          print " --> [ERROR] path %s does not exist. Ntuples will remain in crab_area/crab_%s/results"%(opt.outputPath,opt.sampleType)
-          print "~~~~~~~~~~~~~~~~~~~~~ EXTRACTION (END) ~~~~~~~~~~~~~~~~~~~~~"  
-          sys.exit(1)
-
-      # Check if directory already exists
-      if os.path.isdir("%s/%s"%(outputPath,opt.sampleType)):
-        move = input("Output directory already exists. Do you want to move ntuples anyway [yes=1,no=0]:")
-        if move:
-          print " --> Moving ntuples to %s/%s"%(outputPath,opt.sampleType)
-          os.system("mv crab_area/crab_%s/results/ntuple*.root %s/%s"%(opt.sampleType,outputPath,opt.sampleType))
-        else:
-          print "Ntuples will remain in crab_area/crab_%s/results"%opt.sampleType
-      # if not then make directory and move ntuples there
-      else:
-        os.system("mkdir %s/%s"%(outputPath,opt.sampleType))
         print " --> Moving ntuples to %s/%s"%(outputPath,opt.sampleType)
-        os.system("mv crab_area/crab_%s/results/ntuple*.root %s/%s"%(opt.sampleType,outputPath,opt.sampleType))
+        if len(os.listdir("crab_area/crab_%s/results/"%opt.sampleType))==0:
+          print " --> No ntuples in folder. Leaving..."
+          print "~~~~~~~~~~~~~~~~~~~~~ EXTRACTION (END) ~~~~~~~~~~~~~~~~~~~~~"  
+          sys.exit(1) 
+        else: os.system("mv crab_area/crab_%s/results/ntuple*.root %s/%s"%(opt.sampleType,outputPath,opt.sampleType))
         
     else:
       print " --> Leaving"

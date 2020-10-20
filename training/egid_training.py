@@ -16,6 +16,7 @@ import os
 import sys
 from array import array
 from optparse import OptionParser
+from feature_slimmer import Boruta
 
 #Additional functions (if needed)
 from root_numpy import tree2array, fill_hist
@@ -30,10 +31,14 @@ def get_options():
   parser.add_option('--bdtConfig', dest='bdtConfig', default='baseline', help="BDT config (accepted values: baseline/full)" )
   parser.add_option('--reweighting', dest='reweighting', default=1, type='int', help="Boolean to perform re-weighting of clusters to equalise signal and background [yes=1 (default), no=0]" )
   parser.add_option('--trainParams',dest='trainParams', default=None, help='Comma-separated list of colon-separated pairs corresponding to (hyper)parameters for the training')
+  parser.add_option('--Boruta',dest='Boruta', action='store_true', default=False, help='Perform automatic feature slimming using the Boruta algorithm')
   return parser.parse_args()
 
 # HARDCODED: input variables to BDT for different configs. Specify config in options. To try new BDT with different inputs variables, then add another key to dict
-egid_vars = {"electron_200PU_vs_neutrino_200PU_baseline":['cl3d_coreshowerlength','cl3d_firstlayer','cl3d_maxlayer','cl3d_srrmean'],'electron_200PU_vs_neutrino_200PU_full':['cl3d_coreshowerlength','cl3d_showerlength','cl3d_firstlayer','cl3d_maxlayer','cl3d_szz','cl3d_srrmean','cl3d_srrtot','cl3d_seetot','cl3d_spptot']}
+egid_vars = {'electron_200PU_vs_neutrino_200PU_baseline':         ['cl3d_coreshowerlength','cl3d_firstlayer','cl3d_maxlayer','cl3d_srrmean'],
+             'electron_200PU_vs_neutrino_200PU_maxvars':          ['cl3d_coreshowerlength','cl3d_showerlength','cl3d_firstlayer','cl3d_maxlayer','cl3d_szz','cl3d_srrmean','cl3d_srrtot','cl3d_seetot','cl3d_spptot',
+                                                                   'cl3d_meanz', 'cl3d_layer90', 'cl3d_layer50', 'cl3d_layer10', 'cl3d_ntc_67', 'cl3d_ntc_90']
+            }
 
 # Define eta regions for different trainings
 eta_regions = {"low":[1.5,2.7],"high":[2.7,3.0]}
@@ -174,11 +179,23 @@ def train_egid():
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # BUILDING THE MODEL
     if opt.reweighting:
-      training_egid = xg.DMatrix( egid_train_X, label=egid_train_y, weight=egid_train_w, feature_names=egid_vars[bdt_name] )
-      validation_egid = xg.DMatrix( egid_valid_X, label=egid_valid_y, weight=egid_valid_w, feature_names=egid_vars[bdt_name] )
+      if opt.Boruta:
+        #perform Boruta alorithm for better featue selection
+        slimmed_vars = Boruta(egid_train_X, egid_train_y, egid_train_w, egid_vars[bdt_name], i_iters=5, n_trainings=3)()
+        training_egid = xg.DMatrix( egid_train_X, label=egid_train_y, feature_names=slimmed_vars )
+        validation_egid = xg.DMatrix( egid_valid_X, label=egid_valid_y, feature_names=slimmed_vars )
+      else:
+        training_egid = xg.DMatrix( egid_train_X, label=egid_train_y, feature_names=egid_vars[bdt_name] )
+        validation_egid = xg.DMatrix( egid_valid_X, label=egid_valid_y, feature_names=egid_vars[bdt_name] )
     else:
-      training_egid = xg.DMatrix( egid_train_X, label=egid_train_y, feature_names=egid_vars[bdt_name] )
-      validation_egid = xg.DMatrix( egid_valid_X, label=egid_valid_y, feature_names=egid_vars[bdt_name] )
+      if opt.Boruta:
+        #perform Boruta alorithm for better featue selection
+        slimmed_vars = Boruta(egid_train_X, egid_train_y, np.ones_like(egid_train_y), egid_vars[bdt_name], i_iters=5, n_trainings=3)()
+        training_egid = xg.DMatrix( egid_train_X, label=egid_train_y, feature_names=slimmed_vars )
+        validation_egid = xg.DMatrix( egid_valid_X, label=egid_valid_y, feature_names=slimmed_vars )
+      else:
+        training_egid = xg.DMatrix( egid_train_X, label=egid_train_y, feature_names=egid_vars[bdt_name] )
+        validation_egid = xg.DMatrix( egid_valid_X, label=egid_valid_y, feature_names=egid_vars[bdt_name] )
 
     # extract training hyper-parameters for model from input option
     trainParams = {}
@@ -194,9 +211,9 @@ def train_egid():
         paramExt += '%s)%s__'%(param_value)
       paramExt = paramExt[:-2]
 
-    # Train the model
+    # Train the model, with option of using Boruta feature selection
     print " --> Training the model: %s"%trainParams
-    egid = xg.train( trainParams, training_egid )
+    egid = xg.train( trainParams, training_egid)
     print " --> Done."
 
     # Save the model
@@ -208,6 +225,13 @@ def train_egid():
     egid.dump_model("./models/raw/egid_%s_%s_%seta.raw.txt"%(bdt_name,opt.clusteringAlgo,reg))
     print " --> Model saved (RAW): ./models/raw/egid_%s_%s_%seta.raw.txt"%(bdt_name,opt.clusteringAlgo,reg)
 
+    #plot faeture importances
+    plt.figure(figsize=(7,10))
+    xg.plot_importance(egid, importance_type='gain')
+    plt.tight_layout()
+    plt.savefig('{}/plotting/plots/feature_importance_{}_eta.pdf'.format(os.environ['HGCAL_L1T_BASE'], reg))
+    print(' --> Saved importance as: {}/plotting/plots/feature_importance_{}_eta.pdf'.format(os.environ['HGCAL_L1T_BASE'], reg))
+    plt.close()
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # CHECKING PERFORMANCE OF MODEL: using trainig and validation sets
     egid_train_predy = egid.predict( training_egid )

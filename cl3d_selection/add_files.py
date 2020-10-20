@@ -13,6 +13,7 @@ def get_options():
   parser = OptionParser( usage="python add_files.py --sampleType=<sampleType>" )
   parser.add_option("--sampleType", dest='sampleType', default='electron_200PU', help="Sample to process, default signal is electron_200PU, default bkg is neutrino_200PU")
   parser.add_option("--clusteringAlgo", dest="clusteringAlgo", default="Histomaxvardr", help="Clustering algorithm used in ntuple production")
+  parser.add_option("--testFrac", dest="test_frac", default=0.1, help="Fractional split of test sample. Train sample frac is 1-test_frac.")
   parser.add_option("--deleteIndividualFiles", dest="deleteIndividualFiles", default=0, type="int", help="Delete individual files after hadding [1=yes,0=no (default)]")
   return parser.parse_args()
 
@@ -30,7 +31,7 @@ if N_files == 0:
   print " --> [ERROR] %s is empty. No files to add"%opt.sampleType
   print "~~~~~~~~~~~~~~~~~~~~~ ADD FILES (END) ~~~~~~~~~~~~~~~~~~~~~"
   sys.exit(1)
-N_test = int(0.1*N_files)
+N_test = int(opt.test_frac*N_files)
 N_train = int(N_files-N_test)
 
 print " --> Making all (%g), test (%g) and train (%g) samples"%(N_files,N_test,N_train)

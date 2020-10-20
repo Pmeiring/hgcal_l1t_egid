@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import xgboost as xg
 import matplotlib.pyplot as plt
-from matplotlib import colors as mcolors
+plt.style.use("cms11_nominal")
 import pickle
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import roc_auc_score, roc_curve
@@ -47,7 +47,7 @@ def get_options():
 (opt,args) = get_options()
 
 def leave():
-  print "~~~~~~~~~~~~~~~~~~~~~ egid SUMMARY (END) ~~~~~~~~~~~~~~~~~~~~~"
+  print("~~~~~~~~~~~~~~~~~~~~~ egid SUMMARY (END) ~~~~~~~~~~~~~~~~~~~~~")
   sys.exit(1)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -58,7 +58,7 @@ def get_path( _i, _proc ): return "%s/training/results/%s/%s_%s_%s_eval.root"%(o
 
 def summary_egid():
 
-  print "~~~~~~~~~~~~~~~~~~~~~~~~ egid SUMMARY ~~~~~~~~~~~~~~~~~~~~~~~~"
+  print("~~~~~~~~~~~~~~~~~~~~~~~~ egid SUMMARY ~~~~~~~~~~~~~~~~~~~~~~~~")
 
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # CONFIGURE INPUTS
@@ -67,7 +67,7 @@ def summary_egid():
   info = {}
   _i = opt.inputMap.split(",")
   if len(_i)!=4:
-    print " --> [ERROR] Incorrect number of input elements. Please use format: <signalType>,<backgroundType>,<clustering Algo.>,<dataset [test,train,all]>"
+    print(" --> [ERROR] Incorrect number of input elements. Please use format: <signalType>,<backgroundType>,<clustering Algo.>,<dataset [test,train,all]>")
     leave()
   info['signal'] = _i[0]
   info['background'] = _i[1]
@@ -83,7 +83,7 @@ def summary_egid():
     bdt_colours[ bdt_name ] = bdt.split(":")[2] 
   #Check there is atleast one input bdt
   if len(bdt_list) == 0:
-    print " --> [ERROR] No input BDT. Leaving..."
+    print(" --> [ERROR] No input BDT. Leaving...")
     leave()
 
   # Define variables to store in dataFrame
@@ -98,7 +98,7 @@ def summary_egid():
   for proc in ['signal','background']:
     # Extract signal and background files
     if not os.path.exists( get_path(info,proc) ):
-      print " --> [ERROR] Input %s ntuple does not exists: %s. Please run egid_evaluate first! Leaving..."%(proc,get_path(info,proc))
+      print(" --> [ERROR] Input %s ntuple does not exists: %s. Please run egid_evaluate first! Leaving..."%(proc,get_path(info,proc)))
       leave()
     iFile = ROOT.TFile( get_path(info,proc) )
     iTree = iFile.Get( treeMap[ info[proc].split("_")[0] ] )
@@ -123,7 +123,7 @@ def summary_egid():
     frames[proc]['proc'] = proc
     frames[proc]['type'] = info[proc]
 
-  print " --> Extracted dataframes signal and background input ntuples"
+  print(" --> Extracted dataframes signal and background input ntuples")
   # Make one combined dataFrame
   frames_list = []
   for proc in ['signal','background']: frames_list.append( frames[proc] )
@@ -134,7 +134,7 @@ def summary_egid():
   for reg in eta_regions: 
     frames_splitByEta[reg] = frameTotal[ abs(frameTotal['cl3d_eta']) > eta_regions[reg][0] ]
     frames_splitByEta[reg] = frames_splitByEta[reg][ abs(frames_splitByEta[reg]['cl3d_eta']) <= eta_regions[reg][1] ]
-  print " --> Dataframes split into eta regions"
+  print(" --> Dataframes split into eta regions")
 
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # DEFINE DICTS TO STORE EFFS FOR EACH BDT
@@ -147,7 +147,7 @@ def summary_egid():
   # LOOP OVER BDTS CONFIGS
   for b in bdt_list:
 
-    print " --> Calculating efficiencies for BDT: %s"%b
+    print(" --> Calculating efficiencies for BDT: %s"%b)
 
     # sort frame according to BDT score
     if "tpg" in b: bdt_var = "cl3d_bdt_tpg"
@@ -195,31 +195,31 @@ def summary_egid():
 
       # Extract indices of working points
       for wp in working_points: wp_idx[key].append( abs((eff_signal[key]-wp)).argmin() )
-      print " --> Extracted working points for BDT: %s, eta_region = %s"%(b,reg)
+      print(" --> Extracted working points for BDT: %s, eta_region = %s"%(b,reg))
 
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # PRINT INFO TO USER
-  print " ~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~"  
-  print " --> INPUT: * signal          = %s"%info['signal']
-  print "            * background      = %s"%info['background']
-  print "            * cl3d_algo       = %s"%info['cl3d_algo']
-  print "            * dataset         = %s"%info['dataset']
-  print " ~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~"  
-  print ""
-  print "   ~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~>,~.,~.,~.,~"
+  print(" ~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~")
+  print(" --> INPUT: * signal          = %s"%info['signal'])
+  print("            * background      = %s"%info['background'])
+  print("            * cl3d_algo       = %s"%info['cl3d_algo'])
+  print("            * dataset         = %s"%info['dataset'])
+  print(" ~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~")
+  print("")
+  print("   ~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~>,~.,~.,~.,~")
   for b in bdt_list:
-    print "   --> BDT:   * discriminator = %s"%("_".join(b.split("_")[:-1]))
-    print "              * config        = %s"%b.split("_")[-1]
+    print("   --> BDT:   * discriminator = %s"%("_".join(b.split("_")[:-1])))
+    print("              * config        = %s"%b.split("_")[-1])
     for reg in eta_regions:
       key = "%s_%s"%(b,reg)
-      print ""
-      print "   --> Eta region: %s --> %.2f < |eta| < %.2f"%(reg,eta_regions[reg][0],eta_regions[reg][1])
-      print "      --> Working points:"
+      print("")
+      print("   --> Eta region: %s --> %.2f < |eta| < %.2f"%(reg,eta_regions[reg][0],eta_regions[reg][1]))
+      print("      --> Working points:")
       for wp_itr in range(len(working_points)):
         wp = working_points[wp_itr]
-        print "                  * At epsilon_s = %4.3f ::: BDT cut = %8.7f, epsilon_b = %5.4f"%(wp,bdt_points[key][wp_idx[key][wp_itr]],eff_background[key][wp_idx[key][wp_itr]])
+        print("                  * At epsilon_s = %4.3f ::: BDT cut = %8.7f, epsilon_b = %5.4f"%(wp,bdt_points[key][wp_idx[key][wp_itr]],eff_background[key][wp_idx[key][wp_itr]]))
     
-    print "   ~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~>,~.,~.,~.,~"
+    print("   ~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~>,~.,~.,~.,~")
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # SAVE WORKING POINTS TO TXT FILE
   # only save if signal and background match what was used to train BDT
@@ -227,7 +227,7 @@ def summary_egid():
   for b in bdt_list:
 
     if( info['signal'] in b )&( info['background'] in b ):
-      print " --> Saving working points to .txt files: %s"%b
+      print(" --> Saving working points to .txt files: %s"%b)
       f_out = open("./wp/%s_wp.txt"%b,"w")
       f_out.write("Working Points: %s\n"%b)
       for reg in eta_regions:
@@ -241,30 +241,40 @@ def summary_egid():
 
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # PLOT ROC CURVES
+  quick_remap = {'electron_200PU_vs_neutrino_200PU_intermed':'Baseline', 'electron_200PU_vs_neutrino_200PU_maxvars':'Full'}
   if opt.outputROC:
 
     if not os.path.isdir("%s/plotting/plots"%os.environ['HGCAL_L1T_BASE']): os.system("mkdir %s/plotting/plots"%os.environ['HGCAL_L1T_BASE'])
 
-    print " --> Plotting ROC curves"
+    print(" --> Plotting ROC curves")
     # Plot high and low eta regions separately
     plt_itr = 1
     for reg in eta_regions:
       plt.figure(plt_itr)
       for b in bdt_list:
         key = "%s_%s"%(b,reg)
-        _label = b
-        plt.plot( eff_signal[key], 1-eff_background[key], label=_label, color=bdt_colours[b] )
-      plt.xlabel('Signal Eff. ($\epsilon_s$)')
-      plt.ylabel('1 - Background Eff. ($1-\epsilon_b$)')
-      plt.title('%.2f$ < |\eta| < $%.2f'%(eta_regions[reg][0],eta_regions[reg][1]))
+        #_label = b
+        _label = quick_remap[b]
+        plt.plot( eff_signal[key], 1-eff_background[key], label=_label.split('_')[-1], color=bdt_colours[b] )
+
+
       axes = plt.gca()
       axes.set_xlim([0.5,1.1])
       axes.set_ylim([0.5,1.1])
-      plt.legend(bbox_to_anchor=(0.05,0.1), loc='lower left')
+      axes.tick_params(which='both', top=True, right=True)
+      plt.grid(True)
+
+      axes.legend(bbox_to_anchor=(0.05,0.1), loc='lower left', prop={'size':12})
+      axes.set_xlabel('Signal Eff. ($\epsilon_s$)', size=11, ha='right', x=1)
+      axes.set_ylabel('1 - Background Eff. ($1-\epsilon_b$)', size=11, ha='right', y=1)
+      plt.text(0, 1.01, r'\textbf{CMS Phase-2} \textit{Simulation Preliminary}', ha='left', va='bottom', transform=axes.transAxes)
+      plt.text(1, 1.01, r'$14$ TeV, $200$ PU', ha='right', va='bottom', transform=axes.transAxes)
+      plt.text(0.05, 0.95, r'\textbf{EG endcap}, $%.2f < |\eta| < %.2f$'%(eta_regions[reg][0],eta_regions[reg][1]), ha='left', va='top', transform=axes.transAxes)
+
       plt.savefig( "%s/plotting/plots/ROC_%seta.png"%(os.environ['HGCAL_L1T_BASE'],reg) )
       plt.savefig( "%s/plotting/plots/ROC_%seta.pdf"%(os.environ['HGCAL_L1T_BASE'],reg) )
       plt_itr += 1
-      print " --> Saved plot: %s/plotting/plots/ROC_%seta.(png/pdf)"%(os.environ['HGCAL_L1T_BASE'],reg)
+      print(" --> Saved plot: %s/plotting/plots/ROC_%seta.(png/pdf)"%(os.environ['HGCAL_L1T_BASE'],reg))
   leave()
 # END OF SUMMARY FUNCTION
 
