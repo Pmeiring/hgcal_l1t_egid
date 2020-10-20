@@ -16,9 +16,9 @@ def get_options():
 
 #Total number of files for each sample: use if want all files to be processes
 totalFilesDict = {
-  "electron_0PU":22,
-  "electron_200PU":400,
-  "neutrino_200PU":2599
+  #"electron_0PU":22,
+  "electron_200PU":630,
+  "neutrino_200PU":5646
 }
 
 #Define path and 
@@ -36,6 +36,13 @@ elif opt.numberOfFiles > totalFilesDict[opt.sampleType]:
 else:
   print " --> Processing %g files"%opt.numberOfFiles
   N_process = opt.numberOfFiles
+
+#Check/create output file dirs
+if not os.path.isdir("./jobs"):
+  os.system("mkdir jobs")
+  os.system("mkdir jobs/err")
+  os.system("mkdir jobs/log")
+  os.system("mkdir jobs/out")
 
 #Create condor submission file
 print " --> Creating HTCondor submission file: %s"%f_sub_name

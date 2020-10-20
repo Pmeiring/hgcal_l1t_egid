@@ -53,10 +53,11 @@ else:
   print "~~~~~~~~~~~~~~~~~~~~ Cl3D Selection (END) ~~~~~~~~~~~~~~~~~~~~"
   sys.exit(1)
 
-# Open trees to read from
+# Open trees to read from. gen and reco trees no longer separated so read in single tree now
 f_in = ROOT.TFile.Open( f_in_name )
-gen_tree = f_in.Get("%s/HGCalTriggerNtuple"%clusteringAlgoDirDict["gen"])
-cl3d_tree = f_in.Get("%s/HGCalTriggerNtuple"%clusteringAlgoDirDict[clusteringAlgo])
+#gen_tree = f_in.Get("%s/HGCalTriggerNtuple"%clusteringAlgoDirDict["gen"])
+#cl3d_tree = f_in.Get("%s/HGCalTriggerNtuple"%clusteringAlgoDirDict[clusteringAlgo])
+tree = f_in.Get("hgcalTriggerNtuplizer/HGCalTriggerNtuple")
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # CLASS DEFINITIONS
@@ -86,31 +87,46 @@ class Cluster3D:
     self.emaxe            = _event.cl3d_emaxe[_ncl3d]
     self.bdteg            = _event.cl3d_bdteg[_ncl3d]
     self.quality          = _event.cl3d_quality[_ncl3d]
+    #extra variables from JB
+    self.meanz            = _event.cl3d_meanz[_ncl3d]
+    self.layer90          = _event.cl3d_layer90[_ncl3d]
+    self.layer50          = _event.cl3d_layer50[_ncl3d]
+    self.layer10          = _event.cl3d_layer10[_ncl3d]
+    self.ntc_67           = _event.cl3d_ntc67[_ncl3d]
+    self.ntc_90           = _event.cl3d_ntc90[_ncl3d]
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # FUNCTION DEFINITIONS
 
-#function to fill tree
+#function to fill tree. 
 def fill_cl3d( _cl3d, _out_var ):
-  _out_var['pt'][0] = _cl3d.P4.Pt()
-  _out_var['eta'][0] = _cl3d.P4.Eta()
-  _out_var['phi'][0] = _cl3d.P4.Phi()
-  _out_var['clusters_n'][0] = _cl3d.clusters_n
-  _out_var['showerlength'][0] = _cl3d.showerlength
+  _out_var['pt'][0]               = _cl3d.P4.Pt()
+  _out_var['eta'][0]              = _cl3d.P4.Eta()
+  _out_var['phi'][0]              = _cl3d.P4.Phi()
+  _out_var['clusters_n'][0]       = _cl3d.clusters_n
+  _out_var['showerlength'][0]     = _cl3d.showerlength
   _out_var['coreshowerlength'][0] = _cl3d.coreshowerlength
-  _out_var['firstlayer'][0] = _cl3d.firstlayer
-  _out_var['maxlayer'][0] = _cl3d.maxlayer
-  _out_var['seetot'][0] = _cl3d.seetot
-  _out_var['seemax'][0] = _cl3d.seemax
-  _out_var['spptot'][0] = _cl3d.spptot
-  _out_var['sppmax'][0] = _cl3d.sppmax
-  _out_var['szz'][0] = _cl3d.szz
-  _out_var['srrtot'][0] = _cl3d.srrtot
-  _out_var['srrmax'][0] = _cl3d.srrmax
-  _out_var['srrmean'][0] = _cl3d.srrmean
-  _out_var['emaxe'][0] = _cl3d.emaxe
-  _out_var['bdteg'][0] = _cl3d.bdteg
-  _out_var['quality'][0] = _cl3d.quality
+  _out_var['firstlayer'][0]       = _cl3d.firstlayer
+  _out_var['maxlayer'][0]         = _cl3d.maxlayer
+  _out_var['seetot'][0]           = _cl3d.seetot
+  _out_var['seemax'][0]           = _cl3d.seemax
+  _out_var['spptot'][0]           = _cl3d.spptot
+  _out_var['sppmax'][0]           = _cl3d.sppmax
+  _out_var['szz'][0]              = _cl3d.szz
+  _out_var['srrtot'][0]           = _cl3d.srrtot
+  _out_var['srrmax'][0]           = _cl3d.srrmax
+  _out_var['srrmean'][0]          = _cl3d.srrmean
+  _out_var['emaxe'][0]            = _cl3d.emaxe
+  _out_var['bdteg'][0]            = _cl3d.bdteg
+  _out_var['quality'][0]          = _cl3d.quality
+  #extra variables from JB
+  _out_var['meanz'][0]            = _cl3d.meanz
+  _out_var['layer90'][0]          = _cl3d.layer90
+  _out_var['layer50'][0]          = _cl3d.layer50
+  _out_var['layer10'][0]          = _cl3d.layer10
+  _out_var['ntc_67'][0]           = _cl3d.ntc_67
+  _out_var['ntc_90'][0]           = _cl3d.ntc_90
+
   out_tree.Fill()
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -135,31 +151,34 @@ sampleToTreeDict = {
   "neutrino":"pu_bkg"
 }
 out_tree = ROOT.TTree( sampleToTreeDict[opt.sampleType.split("_")[0]], sampleToTreeDict[opt.sampleType.split("_")[0]] )
-out_var_names = ['pt','eta','phi','clusters_n','showerlength','coreshowerlength','firstlayer','maxlayer','seetot','seemax','spptot','sppmax','szz','srrtot','srrmax','srrmean','emaxe','bdteg','quality']
+out_var_names = ['pt','eta','phi','clusters_n','showerlength','coreshowerlength','firstlayer',
+                 'maxlayer','seetot','seemax','spptot','sppmax','szz','srrtot','srrmax','srrmean',
+                 'emaxe','bdteg','quality','meanz','layer90','layer50','layer10','ntc_67','ntc_90']
+
 out_var = {}
-for var in out_var_names: out_var[var] = array('f',[0.])
+for var in out_var_names: out_var[var] = array('f',[0.]) #needed for python -> root
 #Create branches in output tree
 for var_name, var in out_var.iteritems(): out_tree.Branch( "cl3d_%s"%var_name, var, "cl3d_%s/F"%var_name )
 
 print " --> Output configured"
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+print tree.GetEntries()
 # CL3D SELECTION: loop over events and write clusters passing selection to output file
-for ev_idx in range(cl3d_tree.GetEntries()):
+for ev_idx in range(tree.GetEntries()):
 
   if ev_idx == opt.maxEvents: break
   if opt.maxEvents == -1:
-    if ev_idx % 100 == 0: print "    --> Processing event: %g/%g"%(ev_idx+1,cl3d_tree.GetEntries())
+    if ev_idx % 100 == 0: print "    --> Processing event: %g/%g"%(ev_idx+1,tree.GetEntries())
   else:
     if ev_idx % 100 == 0: print "    --> Processing event: %g/%g"%(ev_idx+1,opt.maxEvents)
 
   #Extract event info from both gen and cluster tree
-  gen_tree.GetEntry( ev_idx )
-  cl3d_tree.GetEntry( ev_idx )
+  tree.GetEntry( ev_idx )
 
   #Extract number of gen particles + cl3d in event
-  N_gen = gen_tree.gen_n
-  N_cl3d = cl3d_tree.cl3d_n
+  N_gen = tree.gen_n
+  N_cl3d = tree.cl3d_n
 
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # GEN-MATCHED CLUSTERS
@@ -167,10 +186,10 @@ for ev_idx in range(cl3d_tree.GetEntries()):
 
     #Loop over gen-e/gamma in event
     for gen_idx in range( N_gen ):
-      if abs( gen_tree.gen_pdgid[gen_idx] ) in pdgid:
+      if abs( tree.gen_pdgid[gen_idx] ) in pdgid:
         #define TLorentzVector for gen particle
         gen_p4 = ROOT.TLorentzVector()
-        gen_p4.SetPtEtaPhiE( gen_tree.gen_pt[gen_idx], gen_tree.gen_eta[gen_idx], gen_tree.gen_phi[gen_idx], gen_tree.gen_energy[gen_idx] )
+        gen_p4.SetPtEtaPhiE( tree.gen_pt[gen_idx], tree.gen_eta[gen_idx], tree.gen_phi[gen_idx], tree.gen_energy[gen_idx] )
         # require gen e/g/pi pT > 20 GeV
         if gen_p4.Pt() < 20.: continue
 
@@ -179,10 +198,10 @@ for ev_idx in range(cl3d_tree.GetEntries()):
         cl3d_genMatched_maxpt = -999
         for cl3d_idx in range( N_cl3d ):
           #requre that cluster pt > 10 GeV
-          if cl3d_tree.cl3d_pt[cl3d_idx] < 10.: continue
+          if tree.cl3d_pt[cl3d_idx] < 10.: continue
           #define TLorentxVector for cl3d
           cl3d_p4 = ROOT.TLorentzVector()
-          cl3d_p4.SetPtEtaPhiE( cl3d_tree.cl3d_pt[cl3d_idx], cl3d_tree.cl3d_eta[cl3d_idx], cl3d_tree.cl3d_phi[cl3d_idx], cl3d_tree.cl3d_energy[cl3d_idx] )
+          cl3d_p4.SetPtEtaPhiE( tree.cl3d_pt[cl3d_idx], tree.cl3d_eta[cl3d_idx], tree.cl3d_phi[cl3d_idx], tree.cl3d_energy[cl3d_idx] )
           #Require cluster to be dR < 0.2 within gen particle
           if cl3d_p4.DeltaR( gen_p4 ) < 0.2:
             #If pT of cluster is > present max then set 
@@ -192,7 +211,7 @@ for ev_idx in range(cl3d_tree.GetEntries()):
 
         # if cl3d idx has been set then add fill cluster to tree
         if cl3d_genMatched_maxpt_idx >= 0:
-          cl3d = Cluster3D( cl3d_tree, cl3d_genMatched_maxpt_idx )
+          cl3d = Cluster3D( tree, cl3d_genMatched_maxpt_idx )
           fill_cl3d( cl3d, out_var )
 
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -202,8 +221,8 @@ for ev_idx in range(cl3d_tree.GetEntries()):
     #Loop over 3d clusters: if pT > 20 GeV then fill as background
     for cl3d_idx in range(0, N_cl3d ):
 
-      if cl3d_tree.cl3d_pt[cl3d_idx] > 20.:
-        cl3d = Cluster3D( cl3d_tree, cl3d_idx )
+      if tree.cl3d_pt[cl3d_idx] > 20.:
+        cl3d = Cluster3D( tree, cl3d_idx )
         fill_cl3d( cl3d, out_var )
 
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

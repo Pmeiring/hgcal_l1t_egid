@@ -11,6 +11,8 @@ The `--bdtConfig` option corresponds to the set of input features. There are cur
 
 By default, the signal and background clusters are reweighted so the signal and background samples are in effect the same size. This can be turned off using `--reweighting 0`. Also, the hyperparameters of the BDT can be changed using the `--trainParams` option, and specifying the hyperparameters in a comma-separated list.
 
+There is also an option to perform automatic feature selection using the "Boruta" algorithm. To turn this on, add the option `--Boruta` when running, which will slim the set of features initially provided. The resulting set of reduced features should be added to the dictionary after running, since this is where future scripts pick up the model/variable definitions from.
+
 The `egid_training.py` trains a BDT separately in the high and low eta regions, and outputs both as `.model` files in the `models` directory.  
 
 ## Converting to xml
