@@ -9,7 +9,8 @@ import numpy as np
 import pandas as pd
 import xgboost as xg
 import matplotlib.pyplot as plt
-plt.style.use("cms11_nominal")
+try: plt.style.use("cms11_nominal")
+except(IOError): print 'Did not find pyplot config file. Using default settings...'
 import pickle
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import roc_auc_score, roc_curve
@@ -241,7 +242,6 @@ def summary_egid():
 
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # PLOT ROC CURVES
-  quick_remap = {'electron_200PU_vs_neutrino_200PU_intermed':'Baseline', 'electron_200PU_vs_neutrino_200PU_maxvars':'Full'}
   if opt.outputROC:
 
     if not os.path.isdir("%s/plotting/plots"%os.environ['HGCAL_L1T_BASE']): os.system("mkdir %s/plotting/plots"%os.environ['HGCAL_L1T_BASE'])
@@ -253,8 +253,7 @@ def summary_egid():
       plt.figure(plt_itr)
       for b in bdt_list:
         key = "%s_%s"%(b,reg)
-        #_label = b
-        _label = quick_remap[b]
+        _label = b
         plt.plot( eff_signal[key], 1-eff_background[key], label=_label.split('_')[-1], color=bdt_colours[b] )
 
 
