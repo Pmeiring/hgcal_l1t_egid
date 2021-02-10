@@ -7,6 +7,8 @@ import ROOT
 import numpy as np
 import pandas as pd
 import xgboost as xg
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import pickle
 from sklearn.preprocessing import LabelEncoder
@@ -41,6 +43,7 @@ egid_vars = {"baseline":['coreshowerlength','firstlayer','maxlayer','srrmean'],
 
 # Define eta regions for different trainings
 eta_regions = {"low":[1.5,2.7],"high":[2.7,3.0]}
+eta_regions = {"low":[1.5,2.7]}
 
 
 #Function to train xgboost model for HGCal L1T egid
@@ -59,14 +62,16 @@ def train_egid():
   bdt_name = opt.bdtConfig
 
   #Dictionaries for sig+bkg type mappings
-  treeMap = {"electron":"sig_train","photon":"g_sig","pion":"pi_bkg","neutrino":"bkg_train"}
-  procMap = {"electron":"signal", "photon":"signal", "pion":"background", "neutrino":"background"}
+  treeMap = {"electron":"sig_train","photon":"g_sig","pion":"pi_bkg","neutrino":"bkg_train","minbias":"bkg_train"}
+  procMap = {"electron":"signal", "photon":"signal", "pion":"background", "neutrino":"background","minbias":"background"}
 
   # Add input files to map
   procFileMap = {}
   if "default" in opt.ptBin:
-      procFileMap[ "electron" ] = "/eos/user/j/jheikkil/www/triggerStudies/histos_ele_flat2to100_PU200_eg_MC_v31_BDT.root"
-      procFileMap[ "neutrino" ] = "/eos/user/j/jheikkil/www/triggerStudies/histos_nugun_10_PU200_ng_bkg_v3_BDT.root"
+      # procFileMap[ "electron" ] = "/afs/cern.ch/work/p/pmeiring/private/CMS/TRG/egtools/CMSSW_11_0_0/src/L1Trigger/hgcal_l1t_egid/histos_ele_flat2to100_PU200_eg_MC_v31_BDT.root"
+      # procFileMap[ "neutrino" ] = "/afs/cern.ch/work/p/pmeiring/private/CMS/TRG/egtools/CMSSW_11_0_0/src/L1Trigger/hgcal_l1t_egid/histos_nugun_10_PU200_ng_bkg_v3_BDT.root"
+      procFileMap[ "electron" ] = "/eos/user/p/pmeiring/www/L1Trigger/histos_ele_flat2to100_PU200_HLTTDR_eg_v69default_1p5eta2p7_BDT.root"
+      procFileMap[ "minbias" ] = "/eos/user/p/pmeiring/www/L1Trigger/histos_minbias_PU200_HLTTDR_eg_v68default_1p5eta2p7_BDT.root"      
       print "Using default pt bin"
   elif "low" in opt.ptBin:
       procFileMap[ "electron" ] = "/eos/user/j/jheikkil/www/triggerStudies/histos_ele_flat2to100_PU200_eg_MC_v31_BDT_lowpt.root"
@@ -217,8 +222,8 @@ def train_egid():
     plt.gcf().subplots_adjust( left = 0.3 )
     plt.xlabel( 'Number of splittings', fontsize = 22 )
     plt.ylabel( 'Feature', fontsize = 22 )
-    plt.savefig( '../plotting/plots/feature_importance_egid_%s_%s_%s_%s.pdf'%(bdt_name,opt.clusteringAlgo,reg,opt.ptBin ))
-    plt.savefig( '../plotting/plots/feature_importance_egid_%s_%s_%s_%s.png'%(bdt_name,opt.clusteringAlgo,reg,opt.ptBin ))
+    plt.savefig( '/eos/user/p/pmeiring/www/L1Trigger/BDT_test/feature_importance_egid_%s_%s_%s_%s.pdf'%(bdt_name,opt.clusteringAlgo,reg,opt.ptBin ))
+    plt.savefig( '/eos/user/p/pmeiring/www/L1Trigger/BDT_test/feature_importance_egid_%s_%s_%s_%s.png'%(bdt_name,opt.clusteringAlgo,reg,opt.ptBin ))
     plt.clf()
 
     # Save in raw format

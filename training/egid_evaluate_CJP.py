@@ -29,7 +29,8 @@ treeMap = {
   "electron":"sig_test",
   "photon":"g_sig",
   "pion":"pi_bkg",
-  "neutrino":"bkg_test"
+  "neutrino":"bkg_test",
+  "minbias":"bkg_test"
 }
 
 
@@ -55,8 +56,10 @@ def get_options():
 # Add input files to map
 inputFiles = {}
 if "default" in opt.ptBin:
-  inputFiles[ "electron" ] = "/eos/user/j/jheikkil/www/triggerStudies/histos_ele_flat2to100_PU200_eg_MC_v31_BDT.root"
-  inputFiles[ "neutrino" ] = "/eos/user/j/jheikkil/www/triggerStudies/histos_nugun_10_PU200_ng_bkg_v3_BDT.root"
+  # inputFiles[ "electron" ] = "/afs/cern.ch/work/p/pmeiring/private/CMS/TRG/egtools/CMSSW_11_0_0/src/L1Trigger/hgcal_l1t_egid/histos_ele_flat2to100_PU200_eg_MC_v31_BDT.root"
+  # inputFiles[ "neutrino" ] = "/afs/cern.ch/work/p/pmeiring/private/CMS/TRG/egtools/CMSSW_11_0_0/src/L1Trigger/hgcal_l1t_egid/histos_nugun_10_PU200_ng_bkg_v3_BDT.root"
+  inputFiles[ "electron" ] = "/eos/user/p/pmeiring/www/L1Trigger/histos_ele_flat2to100_PU200_HLTTDR_eg_v69default_1p5eta2p7_BDT.root"
+  inputFiles[ "minbias" ] = "/eos/user/p/pmeiring/www/L1Trigger/histos_minbias_PU200_HLTTDR_eg_v68default_1p5eta2p7_BDT.root"   
   print "Using default pt bin"
 elif "low" in opt.ptBin:
   inputFiles[ "electron" ] = "/eos/user/j/jheikkil/www/triggerStudies/histos_ele_flat2to100_PU200_eg_MC_v31_BDT_lowpt.root"
@@ -109,7 +112,8 @@ def evaluate_egid():
       print " --> [ERROR] Input variables for BDT %s are not defined. Add key to egid_vars in training. Leaving..."%bdt_name
       print "~~~~~~~~~~~~~~~~~~~~~ egid EVALUATE (END) ~~~~~~~~~~~~~~~~~~~~~"
       sys.exit(1)
-    for reg in ['low','high']:
+    # for reg in ['low','high']:
+    for reg in ['low']:
       if not os.path.exists("./xml/egid_%s_%s_%seta_%s.xml"%(bdt_name,opt.clusteringAlgo,reg,opt.ptBin)):
         print " --> [ERROR] no xml file for BDT: %s. Leaving..."%bdt_name
         print "~~~~~~~~~~~~~~~~~~~~~ egid EVALUATE (END) ~~~~~~~~~~~~~~~~~~~~~"
@@ -175,7 +179,8 @@ def evaluate_egid():
   # Loop over bdts
   for b in bdt_list:
     # Loop over eta regions
-    for reg in ['low','high']:
+    # for reg in ['low','high']:
+    for reg in ['low']:
       bdts["%s_%seta"%(b,reg)], bdt_input_variables["%s_%seta"%(b,reg)] = initialise_egid_BDT( model_xmls["%s_%seta_%s"%(b,reg,opt.ptBin)], egid_vars[b] )
       print " --> Initialised BDT (%s) in %s eta region"%(b,reg)
 

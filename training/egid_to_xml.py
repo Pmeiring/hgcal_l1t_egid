@@ -19,8 +19,8 @@ from egid_training_CJP import egid_vars
 def get_options():
   parser = OptionParser()
   parser.add_option('--clusteringAlgo', dest='clusteringAlgo', default='Histomaxvardr', help="Clustering algorithm with which to optimise BDT" )
-  parser.add_option('--signalType', dest='signalType', default='electron_200PU', help="Input signal type" )
-  parser.add_option('--backgroundType', dest='backgroundType', default='neutrino_200PU', help="Input background type" )
+  # parser.add_option('--signalType', dest='signalType', default='electron_200PU', help="Input signal type" )
+  # parser.add_option('--backgroundType', dest='backgroundType', default='neutrino_200PU', help="Input background type" )
   parser.add_option('--bdtConfig', dest='bdtConfig', default='full', help="BDT config (accepted values: baseline/full)" )
   parser.add_option('--ptBin', dest='ptBin', default='default', help="Used pT bin (accepted values: default, low)" )
 
@@ -54,7 +54,8 @@ def egid_to_xml():
 
   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # LOOP OVER ETA REGIONS
-  for reg in ['low','high']:
+  for reg in ['low']:
+  # for reg in ['low','high']:
   
     print " --> Loading model for %s eta region: ./models/egid_%s_%s_%seta_%s.model"%(reg,bdt_name,opt.clusteringAlgo,reg,opt.ptBin)    
     egid = xg.Booster()

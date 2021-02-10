@@ -32,7 +32,8 @@ treeMap = {
   "electron":"sig_test",
   "photon":"g_sig",
   "pion":"pi_bkg",
-  "neutrino":"bkg_test"
+  "neutrino":"bkg_test",
+  "minbias":"bkg_test"
 }
 
 # HARDCODED: working points would like to output
@@ -42,7 +43,7 @@ working_points = [0.995,0.975,0.95,0.9]
 from optparse import OptionParser
 def get_options():
   parser = OptionParser()
-  parser.add_option('--inputMap', dest='inputMap', default='electron,neutrino,Histomaxvardr,test', help='Comma separated list of input info. Format is <signalType>,<backgroundType>,<clustering Algo.>,<dataset [test,train,all]>')
+  parser.add_option('--inputMap', dest='inputMap', default='electron,minbias,Histomaxvardr,test', help='Comma separated list of input info. Format is <signalType>,<backgroundType>,<clustering Algo.>,<dataset [test,train,all]>')
   parser.add_option('--bdts', dest='bdts', default='full:blue', help="Comma separated list of BDTs to evaluate. Format is <discrimnator>:<config>:<plot colour>... e.g. electron_200PU_vs_neutrino_200PU:baseline:blue,electron_200PU_vs_neutrino_200PU:full:red" )
   parser.add_option('--outputROC', dest='outputROC', default=1, type='int', help="Display output ROC curves for egids [1=yes,0=no]" )
   parser.add_option('--ptBin', dest='ptBin', default='default', help="Used pT bin (accepted values: default, low)" )
@@ -250,7 +251,13 @@ def summary_egid():
   # PLOT ROC CURVES
   if opt.outputROC:
 
-    if not os.path.isdir("%s/plotting/plots"%os.environ['HGCAL_L1T_BASE']): os.system("mkdir %s/plotting/plots"%os.environ['HGCAL_L1T_BASE'])
+    # if not os.path.isdir("%s/plotting/plots"%os.environ['HGCAL_L1T_BASE']): os.system("mkdir %s/plotting/plots"%os.environ['HGCAL_L1T_BASE'])
+    mypath = "/eos/user/p/pmeiring/www/L1Trigger/"
+    if not os.path.isdir(mypath+"BDT_test"):
+      os.system("mkdir %sBDT_test"%mypath)
+      os.system("cp %s/00_index.php %s/BDT_test/index.php"%(mypath,mypath))
+      print "done making the directory"
+
 
     print " --> Plotting ROC curves"
     # Plot high and low eta regions separately
@@ -268,15 +275,15 @@ def summary_egid():
       axes.set_xlim([0.5,1.1])
       axes.set_ylim([0.5,1.1])
       plt.legend(bbox_to_anchor=(0.05,0.1), loc='lower left')
-      plt.savefig( "%s/plotting/plots/ROC_%seta_%s.png"%(os.environ['HGCAL_L1T_BASE'],reg,opt.ptBin) )
-      plt.savefig( "%s/plotting/plots/ROC_%seta_%s.pdf"%(os.environ['HGCAL_L1T_BASE'],reg,opt.ptBin) )
+      plt.savefig( "%s/BDT_test/ROC_%seta_%s.png"%(mypath,reg,opt.ptBin) )
+      plt.savefig( "%s/BDT_test/ROC_%seta_%s.pdf"%(mypath,reg,opt.ptBin) )
       axes.set_ylim([0.8,1.1])
       plt.legend(bbox_to_anchor=(0.05,0.1), loc='lower left')
-      plt.savefig( "%s/plotting/plots/ROC_%seta_%s_zoom.png"%(os.environ['HGCAL_L1T_BASE'],reg,opt.ptBin) )
-      plt.savefig( "%s/plotting/plots/ROC_%seta_%s_zoom.pdf"%(os.environ['HGCAL_L1T_BASE'],reg,opt.ptBin) )
+      plt.savefig( "%s/BDT_test/ROC_%seta_%s_zoom.png"%(mypath,reg,opt.ptBin) )
+      plt.savefig( "%s/BDT_test/ROC_%seta_%s_zoom.pdf"%(mypath,reg,opt.ptBin) )
 
       plt_itr += 1
-      print " --> Saved plot: %s/plotting/plots/ROC_%seta_%s.(png/pdf)"%(os.environ['HGCAL_L1T_BASE'],reg,opt.ptBin)
+      # print " --> Saved plot: %s/plotting/plots/ROC_%seta_%s.(png/pdf)"%(os.environ['HGCAL_L1T_BASE'],reg,opt.ptBin)
       
   leave()
 # END OF SUMMARY FUNCTION
