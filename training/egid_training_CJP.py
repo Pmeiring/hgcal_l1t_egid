@@ -47,9 +47,9 @@ eta_regions = {"low":[1.5,2.7]}
 
 
 #Function to train xgboost model for HGCal L1T egid
-def train_egid():
+def train_egid(opt):
 
-  (opt,args) = get_options()
+  # (opt,args) = get_options()
   print "~~~~~~~~~~~~~~~~~~~~~~~~ egid TRAINING ~~~~~~~~~~~~~~~~~~~~~~~~"
 
   #Set numpy random seed
