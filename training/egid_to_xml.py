@@ -13,38 +13,28 @@ import sys
 from optparse import OptionParser
 
 # Extract input variables to BDT from egid_training.py: if BDT config not defined there then will fail
-from egid_training_CJP import egid_vars
+# from egid_fullProcedureBDT import egid_vars
 
 # Configure options
-def get_options():
-  parser = OptionParser()
-  parser.add_option('--clusteringAlgo', dest='clusteringAlgo', default='Histomaxvardr', help="Clustering algorithm with which to optimise BDT" )
-  # parser.add_option('--signalType', dest='signalType', default='electron_200PU', help="Input signal type" )
-  # parser.add_option('--backgroundType', dest='backgroundType', default='neutrino_200PU', help="Input background type" )
-  parser.add_option('--bdtConfig', dest='bdtConfig', default='full', help="BDT config (accepted values: baseline/full)" )
-  parser.add_option('--ptBin', dest='ptBin', default='default', help="Used pT bin (accepted values: default, low)" )
+# def get_options():
+#   parser = OptionParser()
+#   parser.add_option('--clusteringAlgo', dest='clusteringAlgo', default='Histomaxvardr', help="Clustering algorithm with which to optimise BDT" )
+#   # parser.add_option('--signalType', dest='signalType', default='electron_200PU', help="Input signal type" )
+#   # parser.add_option('--backgroundType', dest='backgroundType', default='neutrino_200PU', help="Input background type" )
+#   parser.add_option('--bdtConfig', dest='bdtConfig', default='full', help="BDT config (accepted values: baseline/full)" )
+#   parser.add_option('--ptBin', dest='ptBin', default='default', help="Used pT bin (accepted values: default, low)" )
 
-  return parser.parse_args()
+#   return parser.parse_args()
 
-(opt,args) = get_options()
+# (opt,args) = get_options()
 
 # Function to convert model into xml
-def egid_to_xml():
+def egid_to_xml(opt, egid_vars, eta_regions, out):
 
   print "~~~~~~~~~~~~~~~~~~~~~~~~ egid TO XML ~~~~~~~~~~~~~~~~~~~~~~~~"
 
   #Define BDT name
   bdt_name = opt.bdtConfig
-  # Check if model exists
-  if not os.path.exists("./models/egid_%s_%s_loweta_%s.model"%(bdt_name,opt.clusteringAlgo,opt.ptBin)):
-    print " --> [ERROR] No model exists for this BDT: ./models/egid_%s_%s_loweta_%s.model. Train first! Leaving..."%(bdt_name,opt.clusteringAlgo,opt.ptBin)
-    print "~~~~~~~~~~~~~~~~~~~~~ egid TRAINING (END) ~~~~~~~~~~~~~~~~~~~~~"
-    sys.exit(1)
-  
-  elif not os.path.exists("./models/egid_%s_%s_higheta_%s.model"%(bdt_name,opt.clusteringAlgo,opt.ptBin)):
-    print " --> [ERROR] No model exists for this BDT: ./models/egid_%s_%s_higheta_%s.model. Train first! Leaving..."%(bdt_name,opt.clusteringAlgo,opt.ptBin)
-    print "~~~~~~~~~~~~~~~~~~~~~ egid TRAINING (END) ~~~~~~~~~~~~~~~~~~~~~"
-    sys.exit(1) 
 
   # Check if input vars for BDT name are defined
   if not bdt_name in egid_vars: 
@@ -54,18 +44,21 @@ def egid_to_xml():
 
   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # LOOP OVER ETA REGIONS
-  for reg in ['low']:
+  for reg in eta_regions:
   # for reg in ['low','high']:
+
+    # Check if model exists
+    if not os.path.exists("%s/BDT_%s/egid_%s_%s_%seta_%s.model"%(out,bdt_name,bdt_name,opt.clusteringAlgo,reg,opt.ptBin)):
+      print " --> [ERROR] No model exists for this BDT: %s/BDT_%s/egid_%s_%s_%seta_%s.model. Train first! Leaving..."%(out,bdt_name,bdt_name,opt.clusteringAlgo,reg,opt.ptBin)
+      print "~~~~~~~~~~~~~~~~~~~~~ egid TRAINING (END) ~~~~~~~~~~~~~~~~~~~~~"
+      sys.exit(1)
   
-    print " --> Loading model for %s eta region: ./models/egid_%s_%s_%seta_%s.model"%(reg,bdt_name,opt.clusteringAlgo,reg,opt.ptBin)    
+    print " --> Loading model for %s eta region: %s/BDT_%s/egid_%s_%s_%seta_%s.model"%(reg,out,bdt_name,bdt_name,opt.clusteringAlgo,reg,opt.ptBin)    
     egid = xg.Booster()
-    egid.load_model( "./models/egid_%s_%s_%seta_%s.model"%(bdt_name,opt.clusteringAlgo,reg,opt.ptBin) )
+    egid.load_model( "%s/BDT_%s/egid_%s_%s_%seta_%s.model"%(out,bdt_name,bdt_name,opt.clusteringAlgo,reg,opt.ptBin)   )
  
     #Define name of xml file to save
-    if not os.path.isdir("./xml"):
-      print " --> Making ./xml directory to store models as xml files"
-      os.system("mkdir xml")
-    f_xml = "./xml/egid_%s_%s_%seta_%s.xml"%(bdt_name,opt.clusteringAlgo,reg,opt.ptBin)
+    f_xml = "%s/BDT_%s/egid_%s_%s_%seta_%s.xml"%(out,bdt_name,bdt_name,opt.clusteringAlgo,reg,opt.ptBin)
 
     # Convert to xml: using mlglue.tree functions
     from mlglue.tree import tree_to_tmva, BDTxgboost, BDTsklearn
@@ -74,7 +67,7 @@ def egid_to_xml():
     bdt = BDTxgboost( egid, egid_vars[bdt_name], target_names, kind='binary', max_depth=6, learning_rate=0.3 )
     bdt.to_tmva( f_xml )
 
-    print " --> Converted to xml: ./xml/egid_%s_%s_%seta_%s.xml"%(bdt_name,opt.clusteringAlgo,reg,opt.ptBin)
+    print " --> Converted to xml: %s/BDT_%s/egid_%s_%s_%seta_%s.xml"%(out,bdt_name,bdt_name,opt.clusteringAlgo,reg,opt.ptBin)
   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # END OF LOOP OVER ETA REGIONS
   print "~~~~~~~~~~~~~~~~~~~~~ egid TO XML (END) ~~~~~~~~~~~~~~~~~~~~~"

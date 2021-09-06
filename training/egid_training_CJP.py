@@ -18,42 +18,19 @@ import os
 import sys
 from array import array
 from optparse import OptionParser
-
-#Additional functions (if needed)
-#from root_numpy import tree2array
-#from root_numpy import fill_hist
-
-
-# Configure options
-def get_options():
-  parser = OptionParser()
-  parser.add_option('--clusteringAlgo', dest='clusteringAlgo', default='Histomaxvardr', help="Clustering algorithm with which to optimise BDT" )
-  parser.add_option('--signalType', dest='signalType', default='electron_200PU', help="Input signal type" )
-  parser.add_option('--backgroundType', dest='backgroundType', default='neutrino_200PU', help="Input background type" )
-  parser.add_option('--bdtConfig', dest='bdtConfig', default='full', help="BDT config (accepted values: baseline/full/extended)" )
-  parser.add_option('--reweighting', dest='reweighting', default=1, type='int', help="Boolean to perform re-weighting of clusters to equalise signal and background [yes=1 (default), no=0]" )
-  parser.add_option('--trainParams',dest='trainParams', default=None, help='Comma-separated list of colon-separated pairs corresponding to (hyper)parameters for the training')
-  parser.add_option('--ptBin', dest='ptBin', default='default', help="Used pT bin (accepted values: default, low)" )
-  return parser.parse_args()
-
-# HARDCODED: input variables to BDT for different configs. Specify config in options. To try new BDT with different inputs variables, then add another key to dict
-egid_vars = {"baseline":['coreshowerlength','firstlayer','maxlayer','srrmean'],
-             'full':['coreshowerlength','showerlength','firstlayer','maxlayer','szz','srrmean','srrtot','seetot','spptot'],
-             'extended':['coreshowerlength','showerlength','firstlayer','maxlayer','szz','srrmean','srrtot','seetot','spptot', 'seemax', 'sppmax', 'srrmax', 'meanz', 'emaxe', 'layer10', 'layer50', 'layer90', 'ntc67', 'ntc90', 'hoe']}
-
-# Define eta regions for different trainings
-eta_regions = {"low":[1.5,2.7],"high":[2.7,3.0]}
-eta_regions = {"low":[1.5,2.7]}
+import seaborn as sns
+import joblib
+# from egid_fullProcedureBDT import egid_vars
 
 
 #Function to train xgboost model for HGCal L1T egid
-def train_egid(opt):
+def train_egid(opt, egid_vars, eta_regions, f_sig, f_bkg, out):
 
   # (opt,args) = get_options()
   print "~~~~~~~~~~~~~~~~~~~~~~~~ egid TRAINING ~~~~~~~~~~~~~~~~~~~~~~~~"
 
-  #Set numpy random seed
-  np.random.seed(123456)
+  #Set numpy random seed 123456
+  np.random.seed(1651231)
 
   # Training and validation fractions
   trainFrac = 0.9
@@ -61,22 +38,8 @@ def train_egid(opt):
 
   bdt_name = opt.bdtConfig
 
-  #Dictionaries for sig+bkg type mappings
-  treeMap = {"electron":"sig_train","photon":"g_sig","pion":"pi_bkg","neutrino":"bkg_train","minbias":"bkg_train"}
-  procMap = {"electron":"signal", "photon":"signal", "pion":"background", "neutrino":"background","minbias":"background"}
-
-  # Add input files to map
-  procFileMap = {}
-  if "default" in opt.ptBin:
-      # procFileMap[ "electron" ] = "/afs/cern.ch/work/p/pmeiring/private/CMS/TRG/egtools/CMSSW_11_0_0/src/L1Trigger/hgcal_l1t_egid/histos_ele_flat2to100_PU200_eg_MC_v31_BDT.root"
-      # procFileMap[ "neutrino" ] = "/afs/cern.ch/work/p/pmeiring/private/CMS/TRG/egtools/CMSSW_11_0_0/src/L1Trigger/hgcal_l1t_egid/histos_nugun_10_PU200_ng_bkg_v3_BDT.root"
-      procFileMap[ "electron" ] = "/eos/user/p/pmeiring/www/L1Trigger/histos_ele_flat2to100_PU200_HLTTDR_eg_v69default_1p5eta2p7_BDT.root"
-      procFileMap[ "minbias" ] = "/eos/user/p/pmeiring/www/L1Trigger/histos_minbias_PU200_HLTTDR_eg_v68default_1p5eta2p7_BDT.root"      
-      print "Using default pt bin"
-  elif "low" in opt.ptBin:
-      procFileMap[ "electron" ] = "/eos/user/j/jheikkil/www/triggerStudies/histos_ele_flat2to100_PU200_eg_MC_v31_BDT_lowpt.root"
-      procFileMap[ "neutrino" ] = "/eos/user/j/jheikkil/www/triggerStudies/histos_nugun_10_PU200_ng_bkg_v3_BDT_lowpt.root"
-  procs = procFileMap.keys()
+  procFileMap = {"signal":f_sig,"background":f_bkg}
+  treeMap = {"signal":"sig_train","background":"bkg_train"}
 
   # Check if models and frames directories exist
   if not os.path.isdir("./models"):
@@ -91,16 +54,16 @@ def train_egid(opt):
   # EXTRACT DATAFRAMES FROM INPUT SELECTED CLUSTERS
   trainTotal = None
   trainFrames = {}
+  
   #extract the trees: turn them into arrays
   for proc,fileName in procFileMap.iteritems():
-    print proc, fileName
+    # print proc, fileName
     trainFile = ROOT.TFile("%s"%fileName)
-    print "HEHEHE:", trainFile
-    print treeMap[proc]
+    # print treeMap[proc]
     trainTree = trainFile.Get( treeMap[proc] )
-    print "UHUHUH:", trainTree
+
     #initialise new tree with only relevant variables
-    _file = ROOT.TFile("tmp.root","RECREATE")
+    _file = ROOT.TFile("tmp%s%s.root"%(opt.ptBin,opt.etaBin),"RECREATE")
     _tree = ROOT.TTree("tmp","tmp")
     _vars = {}
     for var in egid_vars[bdt_name]:
@@ -122,21 +85,24 @@ def train_egid(opt):
     trainFrames[proc] = pd.DataFrame( data=dataTree, columns=columnsTree )
     del _file
     del _tree
-    os.system('rm tmp.root')
-
-    #Add columns to dataframe to labl clusters
-    trainFrames[proc]['proc'] = procMap[ proc ]
+    os.system('rm tmp%s%s.root'%(opt.ptBin,opt.etaBin))
+    #Add columns to dataframe to label clusters
+    # trainFrames[proc]['proc'] = procMap[ proc ]
+    trainFrames[proc]['proc'] = proc
+    print trainFrames[proc]
     print " --> Extracted %s dataFrame from file: %s"%(proc,fileName)
 
   #Create one total frame: i.e. concatenate signal and bkg
-  trainList = []
-  for proc in procs: trainList.append( trainFrames[proc] )
+  # trainList = []
+  # for proc in procs: trainList.append( trainFrames[proc] )
+  trainList = [trainFrames["signal"].append(trainFrames["background"])]
   trainTotal = pd.concat( trainList, sort=False )
   del trainFrames
-  print " --> Created total dataFrame: signal (%s) and background (%s)"%(opt.signalType,opt.backgroundType)
+  print " --> Created total dataFrame"
   print "trainTotal: \n{}".format(trainTotal)
   # Save dataFrames as pkl file
-  pd.to_pickle( trainTotal, "./frames/%s.pkl"%bdt_name )
+  # joblib.dump(trainTotal, "./frames/%s.pkl"%bdt_name)
+  # pd.to_picle( trainTotal, "./frames/%s.pkl"%bdt_name )
 
   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # TRAIN MODEL: loop over different eta regions
@@ -215,21 +181,47 @@ def train_egid(opt):
     print " --> Done."
 
     # Save the model
-    egid.save_model( './models/egid_%s_%s_%seta_%s.model'%(bdt_name,opt.clusteringAlgo,reg,opt.ptBin) )
-    print " --> Model saved: ./models/egid_%s_%s_%seta_%s.model"%(bdt_name,opt.clusteringAlgo,reg,opt.ptBin)
+    egid.save_model( '%s/BDT_%s/egid_%s_%s_%seta_%s.model'%(out,bdt_name,bdt_name,opt.clusteringAlgo,reg,opt.ptBin) )
+    print " --> Model saved: %s/BDT_%s/egid_%s_%s_%seta_%s.model"%(out,bdt_name,bdt_name,opt.clusteringAlgo,reg,opt.ptBin)
  
+    # Feature importance: number of splittings
     xg.plot_importance( egid )
     plt.gcf().subplots_adjust( left = 0.3 )
+    plt.grid(True)
     plt.xlabel( 'Number of splittings', fontsize = 22 )
     plt.ylabel( 'Feature', fontsize = 22 )
-    plt.savefig( '/eos/user/p/pmeiring/www/L1Trigger/BDT_test/feature_importance_egid_%s_%s_%s_%s.pdf'%(bdt_name,opt.clusteringAlgo,reg,opt.ptBin ))
-    plt.savefig( '/eos/user/p/pmeiring/www/L1Trigger/BDT_test/feature_importance_egid_%s_%s_%s_%s.png'%(bdt_name,opt.clusteringAlgo,reg,opt.ptBin ))
+    plt.savefig( '%s/BDT_%s/feature_importance_egid_split_%s_%s_%s_%s.pdf'%(out,bdt_name,bdt_name,opt.clusteringAlgo,reg,opt.ptBin ))
+    plt.savefig( '%s/BDT_%s/feature_importance_egid_split_%s_%s_%s_%s.png'%(out,bdt_name,bdt_name,opt.clusteringAlgo,reg,opt.ptBin ))
     plt.clf()
 
+    # Feature importance: gains
+    xg.plot_importance( egid , importance_type="gain")
+    plt.gcf().subplots_adjust( left = 0.3 )
+    plt.grid(True)
+    plt.xlabel( 'Number of splittings', fontsize = 22 )
+    plt.ylabel( 'Feature', fontsize = 22 )
+    plt.savefig( '%s/BDT_%s/feature_importance_egid_gain_%s_%s_%s_%s.pdf'%(out,bdt_name,bdt_name,opt.clusteringAlgo,reg,opt.ptBin ))
+    plt.savefig( '%s/BDT_%s/feature_importance_egid_gain_%s_%s_%s_%s.png'%(out,bdt_name,bdt_name,opt.clusteringAlgo,reg,opt.ptBin ))
+    plt.clf()
+
+    # Correlation matrix
+    correlations = train_reg[egid_vars[bdt_name]].corr()
+    fig, ax = plt.subplots(figsize=(10,10))
+    ax = sns.heatmap(correlations, vmax=1.0, center=0, cmap="coolwarm",
+                square=True, linewidths=.5, annot=True, cbar_kws={"shrink": .70}
+                )
+    for t in ax.texts: t.set_text(str(int(100.* float(t.get_text()))))
+    cbar = ax.collections[0].colorbar
+    cbar.set_ticks([-1, -0.75, -0.5, -0.25, 0, 0.25, 0.5, 0.75, 1])
+    cbar.set_ticklabels(['-100%', '-75%', '-50%', '-25%', '0%', '25%', '50%', '75%', '100%'])
+    plt.savefig( '%s/BDT_%s/correlations_%s_%s_%s_%s.pdf'%(out,bdt_name,bdt_name,opt.clusteringAlgo,reg,opt.ptBin ))
+    plt.savefig( '%s/BDT_%s/correlations_%s_%s_%s_%s.png'%(out,bdt_name,bdt_name,opt.clusteringAlgo,reg,opt.ptBin ))
+
+
     # Save in raw format
-    if not os.path.isdir("./models/raw"): os.system("mkdir models/raw")
-    egid.dump_model("./models/raw/egid_%s_%s_%seta_%s.raw.txt"%(bdt_name,opt.clusteringAlgo,reg,opt.ptBin))
-    print " --> Model saved (RAW): ./models/raw/egid_%s_%s_%seta_%s.raw.txt"%(bdt_name,opt.clusteringAlgo,reg,opt.ptBin)
+    # if not os.path.isdir("out/raw"): os.system("mkdir models/raw")
+    egid.dump_model("%s/BDT_%s/egid_%s_%s_%seta_%s.raw.txt"%(out,bdt_name,bdt_name,opt.clusteringAlgo,reg,opt.ptBin))
+    print " --> Model saved (RAW): %s/BDT_%s/egid_%s_%s_%seta_%s.raw.txt"%(out,bdt_name,bdt_name,opt.clusteringAlgo,reg,opt.ptBin)
 
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # CHECKING PERFORMANCE OF MODEL: using trainig and validation sets

@@ -1,6 +1,6 @@
 # Script to summarise performance of egid(s)
 #  > Can be used to directly compare performance of trained and tpg egids
-#  > Input: *_eval.root files, output form egid_evaluate.py
+#  > Input: *_eval.root files, output from egid_evaluate.py
 #  > Output: screen + .txt file defining working points
 
 #usual imports
@@ -21,35 +21,8 @@ import os
 import sys
 from array import array
 
-#Additional functions (if needed)
-#from root_numpy import tree2array, fill_hist
-
-# Extract input variables to BDT from egid_training.py: if BDT config not defined there then will fail
-from egid_training_CJP import egid_vars, eta_regions
-
-# Define sample to tree mapping
-treeMap = {
-  "electron":"sig_test",
-  "photon":"g_sig",
-  "pion":"pi_bkg",
-  "neutrino":"bkg_test",
-  "minbias":"bkg_test"
-}
-
 # HARDCODED: working points would like to output
-working_points = [0.995,0.975,0.95,0.9]
-
-# Configure options
-from optparse import OptionParser
-def get_options():
-  parser = OptionParser()
-  parser.add_option('--inputMap', dest='inputMap', default='electron,minbias,Histomaxvardr,test', help='Comma separated list of input info. Format is <signalType>,<backgroundType>,<clustering Algo.>,<dataset [test,train,all]>')
-  parser.add_option('--bdts', dest='bdts', default='full:blue', help="Comma separated list of BDTs to evaluate. Format is <discrimnator>:<config>:<plot colour>... e.g. electron_200PU_vs_neutrino_200PU:baseline:blue,electron_200PU_vs_neutrino_200PU:full:red" )
-  parser.add_option('--outputROC', dest='outputROC', default=1, type='int', help="Display output ROC curves for egids [1=yes,0=no]" )
-  parser.add_option('--ptBin', dest='ptBin', default='default', help="Used pT bin (accepted values: default, low)" )
-  return parser.parse_args()
-
-(opt,args) = get_options()
+working_points = [0.995,0.975,0.95,0.9,0.8,0.7,0.6]
 
 def leave():
   print "~~~~~~~~~~~~~~~~~~~~~ egid SUMMARY (END) ~~~~~~~~~~~~~~~~~~~~~"
@@ -57,11 +30,14 @@ def leave():
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # FUNCTION TO EXTACT PATH TO FILES
-def get_path( _i, _proc ): return "%s/training/results/%s/%s_%s_%s_eval_%s.root"%(os.environ['HGCAL_L1T_BASE'],_i[_proc],_i[_proc],_i['cl3d_algo'],_i['dataset'],_i['ptBin'])
+# def get_path( _i, _proc ): return "%s/training/results/%s/%s_%s_%s_eval_%s.root"%(os.environ['HGCAL_L1T_BASE'],_i[_proc],_i[_proc],_i['cl3d_algo'],_i['dataset'],_i['ptBin'])
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-def summary_egid():
+def summary_egid(opt, egid_vars, eta_regions, out):
+
+  treeMap = {"signal":"sig_%s"%opt.dataset,"background":"bkg_%s"%opt.dataset}
+
 
   print "~~~~~~~~~~~~~~~~~~~~~~~~ egid SUMMARY ~~~~~~~~~~~~~~~~~~~~~~~~"
 
@@ -83,17 +59,21 @@ def summary_egid():
   # Extract bdts names from input list and save plotting colour in map
   bdt_list = []
   bdt_colours = {}
+  colors = ["red","blue","green","black","pink","gray"]
+  i=0
   for bdt in opt.bdts.split(","): 
     bdt_name = bdt.split(":")[0]
     bdt_list.append( bdt_name )
-    bdt_colours[ bdt_name ] = bdt.split(":")[1] 
+    # bdt_colours[ bdt_name ] = bdt.split(":")[1] 
+    bdt_colours[ bdt_name ] = colors[i]
+    i+=1
   #Check there is atleast one input bdt
   if len(bdt_list) == 0:
     print " --> [ERROR] No input BDT. Leaving..."
     leave()
 
   # Define variables to store in dataFrame
-  stored_vars = ["cl3d_eta"]
+  stored_vars = ["cl3d_eta","cl3d_pt"]
   for b in bdt_list: 
     if "tpg" in b: stored_vars.append( "cl3d_bdt_tpg" )
     else: stored_vars.append( "cl3d_bdt_%s"%b )
@@ -103,19 +83,21 @@ def summary_egid():
   frames = {}
   for proc in ['signal','background']:
     # Extract signal and background files
-    if not os.path.exists( get_path(info,proc) ):
-      print " --> [ERROR] Input %s ntuple does not exists: %s. Please run egid_evaluate first! Leaving..."%(proc,get_path(info,proc))
-      leave()
-    iFile = ROOT.TFile( get_path(info,proc) )
-    iTree = iFile.Get( treeMap[ info[proc].split("_")[0] ] )
+    # fpath = "%s/%s_%s_%s_eval_%s.root"%(out,proc,opt.clusteringAlgo,opt.dataset,opt.ptBin)
+    fpath = "%s/%s_%s_%s_eval_%seta_%spt.root"%(out,proc,opt.clusteringAlgo,opt.dataset,opt.etaBin,opt.ptBin)
+    # if not os.path.exists( fpath ):
+    #   print " --> [ERROR] Input %s ntuple does not exists: %s. Please run egid_evaluate first! Leaving..."%(proc,get_path(info,proc))
+    #   leave()
+    iFile = ROOT.TFile( fpath )
+    iTree = iFile.Get( treeMap[ proc ] )
     # Initialise new tree with frame variables
-    _file = ROOT.TFile("tmp.root","RECREATE")
-    _tree = ROOT.TTree("tmp","tmp")
+    _file = ROOT.TFile("tmp%s%s.root"%(opt.etaBin,opt.ptBin),"RECREATE")
+    _tree = ROOT.TTree("tmp%s%s"%(opt.etaBin,opt.ptBin),"tmp%s%s"%(opt.etaBin,opt.ptBin))
     _vars = {}
     for var in stored_vars:
       _vars[var] = array('f',[-1.])
       _tree.Branch( '%s'%var, _vars[var], '%s/F'%var )
-    # Loop over clusters in inpu tree and fill new tree
+    # Loop over clusters in input tree and fill new tree
     for cl3d in iTree:
       for var in stored_vars: _vars[ var ][0] = getattr( cl3d, '%s'%var )
       _tree.Fill()
@@ -125,16 +107,15 @@ def summary_egid():
     #frames[proc] = pd.DataFrame( tree2array(_tree) )
     del _file
     del _tree
-    system('rm tmp.root')      
+    system('rm tmp%s%s.root'%(opt.etaBin,opt.ptBin))      
 
     # Add columns to dataFrame to label clusters
     frames[proc]['proc'] = proc
-    frames[proc]['type'] = info[proc]
+    # frames[proc]['type'] = info[proc]
 
   print " --> Extracted dataframes signal and background input ntuples"
   # Make one combined dataFrame
-  frames_list = []
-  for proc in ['signal','background']: frames_list.append( frames[proc] )
+  frames_list = [frames["signal"].append(frames["background"])]
   frameTotal = pd.concat( frames_list, sort=False )
 
   # Split into eta regions
@@ -142,7 +123,9 @@ def summary_egid():
   for reg in eta_regions: 
     frames_splitByEta[reg] = frameTotal[ abs(frameTotal['cl3d_eta']) > eta_regions[reg][0] ]
     frames_splitByEta[reg] = frames_splitByEta[reg][ abs(frames_splitByEta[reg]['cl3d_eta']) <= eta_regions[reg][1] ]
+
   print " --> Dataframes split into eta regions"
+  print frames_splitByEta
 
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # DEFINE DICTS TO STORE EFFS FOR EACH BDT
@@ -183,6 +166,8 @@ def summary_egid():
       N_sig_running, N_bkg_running = 0., 0.
       for index, row in fr.iterrows():
         # Add one to running counters depending on proc
+        # print row['proc']
+
         if row['proc'] == 'signal': N_sig_running += 1.
         elif row['proc'] == 'background': N_bkg_running += 1.
         eff_s, eff_b = 1.-(N_sig_running/N_sig_total), 1.-(N_bkg_running/N_bkg_total)
@@ -196,6 +181,10 @@ def summary_egid():
         eff_signal[key].append( eff_s )
         eff_background[key].append( eff_b )
 
+      # print bdt_points
+      # print eff_signal
+      # print eff_background
+
       # Convert lists into numpy arrays
       bdt_points[key] = np.asarray(bdt_points[key])
       eff_signal[key] = np.asarray(eff_signal[key])
@@ -207,11 +196,11 @@ def summary_egid():
 
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # PRINT INFO TO USER
-  print " ~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~"  
-  print " --> INPUT: * signal          = %s"%info['signal']
-  print "            * background      = %s"%info['background']
-  print "            * cl3d_algo       = %s"%info['cl3d_algo']
-  print "            * dataset         = %s"%info['dataset']
+  # print " ~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~"  
+  # print " --> INPUT: * signal          = %s"%info['signal']
+  # print "            * background      = %s"%info['background']
+  # print "            * cl3d_algo       = %s"%info['cl3d_algo']
+  # print "            * dataset         = %s"%info['dataset']
   print " ~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~"  
   print ""
   print "   ~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~>,~.,~.,~.,~"
@@ -231,34 +220,25 @@ def summary_egid():
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # SAVE WORKING POINTS TO TXT FILE
   # only save if signal and background match what was used to train BDT
-  if not os.path.isdir("./wp"): os.system("mkdir wp")
+  # if not os.path.isdir("%s/_Summary"%out): os.system("%s/_Summary"%out)
   for b in bdt_list:
 
-    if( info['signal'] in b )&( info['background'] in b ):
-      print " --> Saving working points to .txt files: %s"%b
-      f_out = open("./wp/%s_wp.txt"%b,"w")
+    # if( info['signal'] in b )&( info['background'] in b ):
+    print " --> Saving working points to .txt files: %s"%b
+    for reg in eta_regions:
+      f_out = open("%s/_Summary/%s_%seta_%s_wp.txt"%(out,b,reg,opt.ptBin),"w")
       f_out.write("Working Points: %s\n"%b)
-      for reg in eta_regions:
-        key = "%s_%s"%(b,reg)
-        f_out.write(" --> Eta region: %s\n"%reg)
-        for wp_itr in range(len(working_points)):
-          wp = working_points[wp_itr]
-          f_out.write("          * %.1f : %8.7f\n"%((wp*100),bdt_points[key][wp_idx[key][wp_itr]])) 
+      key = "%s_%s"%(b,reg)
+      f_out.write(" --> Eta region: %s\n"%reg)
+      for wp_itr in range(len(working_points)):
+        wp = working_points[wp_itr]
+        f_out.write("          * At epsilon_s = %4.3f ::: BDT cut = %8.7f, epsilon_b = %5.4f\n"%(wp,bdt_points[key][wp_idx[key][wp_itr]],eff_background[key][wp_idx[key][wp_itr]]))
       f_out.close()
-    else: continue
+    # else: continue
 
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # PLOT ROC CURVES
   if opt.outputROC:
-
-    # if not os.path.isdir("%s/plotting/plots"%os.environ['HGCAL_L1T_BASE']): os.system("mkdir %s/plotting/plots"%os.environ['HGCAL_L1T_BASE'])
-    mypath = "/eos/user/p/pmeiring/www/L1Trigger/"
-    if not os.path.isdir(mypath+"BDT_test"):
-      os.system("mkdir %sBDT_test"%mypath)
-      os.system("cp %s/00_index.php %s/BDT_test/index.php"%(mypath,mypath))
-      print "done making the directory"
-
-
     print " --> Plotting ROC curves"
     # Plot high and low eta regions separately
     plt_itr = 1
@@ -271,21 +251,23 @@ def summary_egid():
       plt.xlabel('Signal Eff. ($\epsilon_s$)')
       plt.ylabel('1 - Background Eff. ($1-\epsilon_b$)')
       plt.title('%.2f$ < |\eta| < $%.2f'%(eta_regions[reg][0],eta_regions[reg][1]))
+      plt.grid(True)
       axes = plt.gca()
-      axes.set_xlim([0.5,1.1])
+      axes.set_xlim([0.0,1.1])
+      axes.set_ylim([0.0,1.1])
+      plt.legend(bbox_to_anchor=(0.05,0.1), loc='lower left')
+      plt.savefig( "%s/_Summary/ROC_%seta_%s.png"%(out,reg,opt.ptBin) )
+      plt.savefig( "%s/_Summary/ROC_%seta_%s.pdf"%(out,reg,opt.ptBin) )
       axes.set_ylim([0.5,1.1])
+      axes.set_xlim([0.5,1.1])
       plt.legend(bbox_to_anchor=(0.05,0.1), loc='lower left')
-      plt.savefig( "%s/BDT_test/ROC_%seta_%s.png"%(mypath,reg,opt.ptBin) )
-      plt.savefig( "%s/BDT_test/ROC_%seta_%s.pdf"%(mypath,reg,opt.ptBin) )
-      axes.set_ylim([0.8,1.1])
-      plt.legend(bbox_to_anchor=(0.05,0.1), loc='lower left')
-      plt.savefig( "%s/BDT_test/ROC_%seta_%s_zoom.png"%(mypath,reg,opt.ptBin) )
-      plt.savefig( "%s/BDT_test/ROC_%seta_%s_zoom.pdf"%(mypath,reg,opt.ptBin) )
+      plt.savefig( "%s/_Summary/ROC_%seta_%s_zoom.png"%(out,reg,opt.ptBin) )
+      plt.savefig( "%s/_Summary/ROC_%seta_%s_zoom.pdf"%(out,reg,opt.ptBin) )
 
       plt_itr += 1
       # print " --> Saved plot: %s/plotting/plots/ROC_%seta_%s.(png/pdf)"%(os.environ['HGCAL_L1T_BASE'],reg,opt.ptBin)
       
-  leave()
+  # leave()
 # END OF SUMMARY FUNCTION
 
 # Main function for running program
