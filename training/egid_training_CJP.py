@@ -27,7 +27,7 @@ import joblib
 def train_egid(opt, egid_vars, eta_regions, f_sig, f_bkg, out):
 
   # (opt,args) = get_options()
-  print "~~~~~~~~~~~~~~~~~~~~~~~~ egid TRAINING ~~~~~~~~~~~~~~~~~~~~~~~~"
+  print ("~~~~~~~~~~~~~~~~~~~~~~~~ egid TRAINING ~~~~~~~~~~~~~~~~~~~~~~~~")
 
   #Set numpy random seed 123456
   np.random.seed(1651231)
@@ -43,13 +43,13 @@ def train_egid(opt, egid_vars, eta_regions, f_sig, f_bkg, out):
 
   # Check if models and frames directories exist
   if not os.path.isdir("./models"):
-    print " --> Making ./models directory to store trained egid models"
+    print (" --> Making ./models directory to store trained egid models")
     os.system("mkdir models")
   if not os.path.isdir("./frames"):
-    print " --> Making ./frames directory to store pandas dataFrames"
+    print (" --> Making ./frames directory to store pandas dataFrames")
     os.system("mkdir frames")
 
-  print "did I come here"
+  print ("did I come here")
   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # EXTRACT DATAFRAMES FROM INPUT SELECTED CLUSTERS
   trainTotal = None
@@ -80,7 +80,7 @@ def train_egid(opt, egid_vars, eta_regions, f_sig, f_bkg, out):
       _tree.Fill()
   
     #Convert tmp tree to pandas dataFrame and delete tmp files
-    print "Okay let us do the conversion"
+    print ("Okay let us do the conversion")
     dataTree, columnsTree = _tree.AsMatrix(return_labels=True)
     trainFrames[proc] = pd.DataFrame( data=dataTree, columns=columnsTree )
     del _file
@@ -89,8 +89,8 @@ def train_egid(opt, egid_vars, eta_regions, f_sig, f_bkg, out):
     #Add columns to dataframe to label clusters
     # trainFrames[proc]['proc'] = procMap[ proc ]
     trainFrames[proc]['proc'] = proc
-    print trainFrames[proc]
-    print " --> Extracted %s dataFrame from file: %s"%(proc,fileName)
+    print (trainFrames[proc])
+    print (" --> Extracted %s dataFrame from file: %s"%(proc,fileName))
 
   #Create one total frame: i.e. concatenate signal and bkg
   # trainList = []
@@ -98,19 +98,19 @@ def train_egid(opt, egid_vars, eta_regions, f_sig, f_bkg, out):
   trainList = [trainFrames["signal"].append(trainFrames["background"])]
   trainTotal = pd.concat( trainList, sort=False )
   del trainFrames
-  print " --> Created total dataFrame"
-  print "trainTotal: \n{}".format(trainTotal)
+  print (" --> Created total dataFrame")
+  print ("trainTotal: \n{}".format(trainTotal))
   # Save dataFrames as pkl file
   # joblib.dump(trainTotal, "./frames/%s.pkl"%bdt_name)
   # pd.to_picle( trainTotal, "./frames/%s.pkl"%bdt_name )
 
   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # TRAIN MODEL: loop over different eta regions
-  print ""
+  print ("")
   for reg in eta_regions:
 
-    print " ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-    print " --> Training for %s eta region: %2.1f < |eta| < %2.1f"%(reg,eta_regions[reg][0],eta_regions[reg][1])
+    print (" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+    print (" --> Training for %s eta region: %2.1f < |eta| < %2.1f"%(reg,eta_regions[reg][0],eta_regions[reg][1]))
 
     #Impose eta cuts
     train_reg = trainTotal[ abs(trainTotal['eta'])>eta_regions[reg][0] ]
@@ -119,17 +119,17 @@ def train_egid(opt, egid_vars, eta_regions, f_sig, f_bkg, out):
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # REWEIGHTING: 
     if opt.reweighting:
-      print " --> Reweighting: equalise signal and background samples (same sum of weights)"
+      print (" --> Reweighting: equalise signal and background samples (same sum of weights)")
       sum_sig = len( train_reg[ train_reg['proc'] == "signal" ].index )
       sum_bkg = len( train_reg[ train_reg['proc'] == "background" ].index )
       weights = list( map( lambda a: (sum_sig+sum_bkg)/sum_sig if a == "signal" else (sum_sig+sum_bkg)/sum_bkg, train_reg['proc'] ) )
       train_reg['weight'] = weights 
     else:
-      print " --> No reweighting: assuming same S/B as in input ntuples"
+      print (" --> No reweighting: assuming same S/B as in input ntuples")
     
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # CONFIGURE DATASETS: shuffle to get train and validation
-    print " --> Configuring training and validation datasets"
+    print (" --> Configuring training and validation datasets")
     label_encoder = LabelEncoder()
     theShape = train_reg.shape[0]  
     theShuffle = np.random.permutation( theShape )
@@ -149,7 +149,16 @@ def train_egid(opt, egid_vars, eta_regions, f_sig, f_bkg, out):
     #Define training and validation sets
     egid_train_X, egid_valid_X, dummy_X = np.split(egid_X, [egid_trainLimit, egid_validLimit+egid_trainLimit] )
     egid_train_y, egid_valid_y, dummy_y = np.split(egid_y, [egid_trainLimit, egid_validLimit+egid_trainLimit] )
+
     if opt.reweighting: egid_train_w, egid_valid_w, dummy_w = np.split(egid_w, [egid_trainLimit, egid_validLimit+egid_trainLimit] )
+
+    np.save( '%s/BDT_%s/egid_train_X.npy'%(out,bdt_name), egid_train_X)
+    np.save( '%s/BDT_%s/egid_valid_X.npy'%(out,bdt_name), egid_valid_X)
+    np.save( '%s/BDT_%s/egid_train_y.npy'%(out,bdt_name), egid_train_y)
+    np.save( '%s/BDT_%s/egid_valid_y.npy'%(out,bdt_name), egid_valid_y)
+    np.save( '%s/BDT_%s/egid_train_w.npy'%(out,bdt_name), egid_train_w)
+    np.save( '%s/BDT_%s/egid_valid_w.npy'%(out,bdt_name), egid_valid_w)
+    
  
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # BUILDING THE MODEL
@@ -165,24 +174,32 @@ def train_egid(opt, egid_vars, eta_regions, f_sig, f_bkg, out):
     trainParams['objective'] = 'binary:logistic'
     trainParams['nthread'] = 1
     trainParams['random_state'] = 2360
-    paramExt = ''
+    # trainParams['max_depth'] = 3
+
+
+    # paramExt = ''
     if opt.trainParams:
       paramExt = '__'
-      for paramPair in trainParams:
+      paramPairs = opt.trainParams.split(",")
+      for paramPair in paramPairs:
+        # paramPair=opt.trainParams
+        print (paramPair)
         param = paramPair.split(":")[0]
         value = paramPair.split(":")[1]
         trainParams[param] = value
-        paramExt += '%s)%s__'%(param_value)
-      paramExt = paramExt[:-2]
+        # paramExt += '%s)%s__'%(param_value)
+        # paramExt = paramExt[:-2]
 
     # Train the model
-    print " --> Training the model: %s"%trainParams
+    print (" --> Training the model: %s"%trainParams)
     egid = xg.train( trainParams, training_egid )
-    print " --> Done."
+    print (" --> Done.")
 
     # Save the model
     egid.save_model( '%s/BDT_%s/egid_%s_%s_%seta_%s.model'%(out,bdt_name,bdt_name,opt.clusteringAlgo,reg,opt.ptBin) )
-    print " --> Model saved: %s/BDT_%s/egid_%s_%s_%seta_%s.model"%(out,bdt_name,bdt_name,opt.clusteringAlgo,reg,opt.ptBin)
+    myconfig = egid.save_config()
+    # print myconfig
+    print (" --> Model saved: %s/BDT_%s/egid_%s_%s_%seta_%s.model"%(out,bdt_name,bdt_name,opt.clusteringAlgo,reg,opt.ptBin))
  
     # Feature importance: number of splittings
     xg.plot_importance( egid )
@@ -221,22 +238,22 @@ def train_egid(opt, egid_vars, eta_regions, f_sig, f_bkg, out):
     # Save in raw format
     # if not os.path.isdir("out/raw"): os.system("mkdir models/raw")
     egid.dump_model("%s/BDT_%s/egid_%s_%s_%seta_%s.raw.txt"%(out,bdt_name,bdt_name,opt.clusteringAlgo,reg,opt.ptBin))
-    print " --> Model saved (RAW): %s/BDT_%s/egid_%s_%s_%seta_%s.raw.txt"%(out,bdt_name,bdt_name,opt.clusteringAlgo,reg,opt.ptBin)
+    print (" --> Model saved (RAW): %s/BDT_%s/egid_%s_%s_%seta_%s.raw.txt"%(out,bdt_name,bdt_name,opt.clusteringAlgo,reg,opt.ptBin))
 
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # CHECKING PERFORMANCE OF MODEL: using trainig and validation sets
     egid_train_predy = egid.predict( training_egid )
     egid_valid_predy = egid.predict( validation_egid )
 
-    print "    *************************************************"
-    print "    --> Performance: in %s eta region (%2.1f < |eta| < %2.1f)"%(reg,eta_regions[reg][0],eta_regions[reg][1])
-    print "      * Training set   ::: AUC = %5.4f"%roc_auc_score( egid_train_y, egid_train_predy )
-    print "      * Validation set ::: AUC = %5.4f"%roc_auc_score( egid_valid_y, egid_valid_predy )
-    print "    *************************************************"
-    print ""
+    print ("    *************************************************")
+    print ("    --> Performance: in %s eta region (%2.1f < |eta| < %2.1f)"%(reg,eta_regions[reg][0],eta_regions[reg][1]))
+    print ("      * Training set   ::: AUC = %5.4f"%roc_auc_score( egid_train_y, egid_train_predy ))
+    print ("      * Validation set ::: AUC = %5.4f"%roc_auc_score( egid_valid_y, egid_valid_predy ))
+    print ("    *************************************************")
+    print ("")
 
   #END OF LOOP OVER ETA REGIONS
-  print "~~~~~~~~~~~~~~~~~~~~~ egid TRAINING (END) ~~~~~~~~~~~~~~~~~~~~~"
+  print ("~~~~~~~~~~~~~~~~~~~~~ egid TRAINING (END) ~~~~~~~~~~~~~~~~~~~~~")
 # END OF TRAINING FUNCTION
 
 # Main function for running program

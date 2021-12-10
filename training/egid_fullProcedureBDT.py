@@ -27,15 +27,17 @@ def makePlots(sigTTree, bkgTTree,outputdir,subdir=""):
     leg = TLegend(0.65,0.65,0.88,0.88)
     var=key.GetName()
 
-    if "tkpt" in var:
-      sigTTree.Draw("%s>>dummy%s(100,0,100)"%(var,counter),"","histnorm")
-    else:
-      sigTTree.Draw("%s>>dummy%s"%(var,counter),"","histnorm")
-    if "dpt" in var:
-      sigTTree.Draw("%s>>dummy%s(100,0,2)"%(var,counter),"","histnorm")
-    else:
-      sigTTree.Draw("%s>>dummy%s"%(var,counter),"","histnorm")
+    # if "tkpt" in var:
+    #   sigTTree.Draw("%s>>dummy%s(100,0,100)"%(var,counter),"","histnorm")
+    # else:
+    #   sigTTree.Draw("%s>>dummy%s"%(var,counter),"","histnorm")
+    # if "dpt" in var:
+    #   sigTTree.Draw("%s>>dummy%s(100,0,2)"%(var,counter),"","histnorm")
+    # else:
+    #   sigTTree.Draw("%s>>dummy%s"%(var,counter),"","histnorm")
 
+
+    sigTTree.Draw("%s>>dummy%s"%(var,counter),"","histnorm")
     dummy=gDirectory.Get("dummy%s"%counter)
     dummy.SetLineColor(2)
     dummy.SetLineWidth(2)
@@ -47,15 +49,16 @@ def makePlots(sigTTree, bkgTTree,outputdir,subdir=""):
     # leg.AddEntry(gPad.GetListOfPrimitives().At(0),"Signal")
     # htemp.SetLineColor(2)
     # if var in bkgTTree.GetListOfBranches():
-    if "tkpt" in var:
-      bkgTTree.Draw("%s>>dummybkg%s(100,0,100)"%(var,counter),"","samehistnorm")      
-    else:
-      bkgTTree.Draw("%s>>dummybkg%s"%(var,counter),"","samehistnorm")
-    if "dpt" in var:
-      bkgTTree.Draw("%s>>dummybkg%s(100,0,2)"%(var,counter),"","samehistnorm")      
-    else:
-      bkgTTree.Draw("%s>>dummybkg%s"%(var,counter),"","samehistnorm")
+    # if "tkpt" in var:
+    #   bkgTTree.Draw("%s>>dummybkg%s(100,0,100)"%(var,counter),"","samehistnorm")      
+    # else:
+    #   bkgTTree.Draw("%s>>dummybkg%s"%(var,counter),"","samehistnorm")
+    # if "dpt" in var:
+    #   bkgTTree.Draw("%s>>dummybkg%s(100,0,2)"%(var,counter),"","samehistnorm")      
+    # else:
+    #   bkgTTree.Draw("%s>>dummybkg%s"%(var,counter),"","samehistnorm")
 
+    bkgTTree.Draw("%s>>dummybkg%s"%(var,counter),"","samehistnorm")
     dummy=gDirectory.Get("dummybkg%s"%counter)
     dummy.SetLineWidth(2)
     leg.AddEntry(dummy,"Background")
@@ -65,8 +68,8 @@ def makePlots(sigTTree, bkgTTree,outputdir,subdir=""):
     # gPad.GetListOfPrimitives().At(1).SetLineWidth(2)
     # leg.AddEntry(gPad.GetListOfPrimitives().At(1),"Background")    
     leg.Draw("same")
-    if "hoe" in var:
-      c.SetLogy()
+    # if "hoe" in var:
+    #   c.SetLogy()
     c.SaveAs(outputdir_+var+".png")
     c.SaveAs(outputdir_+var+".pdf")
     counter+=1
@@ -104,8 +107,11 @@ egid_vars = {"basic":['coreshowerlength','firstlayer','maxlayer','srrmean'],
              'best9_loweta_lowpt': ['layer90', 'hoe', 'srrtot', 'ntc67', 'ntc90', 'coreshowerlength','seetot', 'layer50', 'spptot'],
              'best9_higheta_lowpt':['seetot', 'layer90', 'meanz', 'hoe', 'ntc90', 'ntc67','spptot', 'layer10', 'emaxe'], 
              'allvars_red':['coreshowerlength','showerlength','firstlayer','maxlayer','szz','srrmean','srrtot','seetot','spptot', 'meanz', 'layer10', 'layer50', 'layer90', 'ntc67', 'ntc90'],
+             'allvars_trk2_best9': ['tkpt','srrtot','dpt','hoe','ntc67','deta','tkchi2','dphi','layer50'],
              # 'best9_loweta_red': ['srrtot', 'ntc67', 'ntc90', 'hoe', 'seetot', 'coreshowerlength','srrmean', 'srrmax', 'emaxe'],
              # 'best9_higheta_red':['ntc67', 'ntc90', 'srrtot', 'hoe', 'spptot', 'sppmax', 'seetot', 'emaxe', 'layer10'],
+             'allAvailVars':               ['hoe','tkpt','srrtot','deta','dpt','meanz','dphi','tkchi2','spptot','tkz0','seetot','showerlength','coreshowerlength','firstlayer','szz','tknstubs'],
+             'allAvailVars_best3cl_alltrk':['hoe','tkpt','srrtot','deta','dpt','meanz','dphi','tkchi2','tkz0','tknstubs']
             }
 
 eta_range={
@@ -118,7 +124,7 @@ def main():
   eos = "/eos/user/p/pmeiring/www/L1Trigger/l1eg/BDTs/"
   php = "/eos/user/p/pmeiring/www/L1Trigger/00_index.php"
   v = 123
-  subdir = "MyBDT_%s/"%v
+  subdir = "MyBDT_%s_20211210/"%v
   # subdir = "MyBDT_newPtRangesBugfix_87/"
   outputdir = eos+subdir
 
@@ -152,6 +158,11 @@ def main():
   for varset in opt.bdts.split(","):
     opt.bdtConfig=varset
     # Train the BDT
+    # if varset=='allvars_trk2_best9':
+      # opt.trainParams='max_depth:3'
+    # else:
+      # opt.trainParams='max_depth:6'
+
     if '1' in opt.step: train_egid(opt, egid_vars, eta_regions, f_sig=file_sig, f_bkg=file_bkg, out=outputdir)
     # Convert the .model to .xml
     if '2' in opt.step: egid_to_xml(opt, egid_vars, eta_regions, out=outputdir)
@@ -159,10 +170,12 @@ def main():
   # Evaluate the clusters with the trained BDTs
   if '3' in opt.step: evaluate_egid(opt, egid_vars, eta_regions, f_sig=file_sig, f_bkg=file_bkg, out=outputdir)
 
-  opt.bdts=opt.bdts+",tpg"
+  # opt.bdts=opt.bdts+",tpg"
   # Make a summary of BDT performance
   if '4' in opt.step: summary_egid(opt, egid_vars, eta_regions, out=outputdir)
 
-  print "\nView results at: https://pmeiring.web.cern.ch/pmeiring/L1Trigger/l1eg/BDTs/"+subdir
+  print ("\nView results at: https://pmeiring.web.cern.ch/pmeiring/L1Trigger/l1eg/BDTs/"+subdir)
 
 if __name__ == "__main__": main()
+
+
