@@ -1,7 +1,7 @@
 from egid_training_CJP import train_egid
-from egid_to_xml import egid_to_xml
-from egid_evaluate_CJP import evaluate_egid
-from egid_summary_CJP import summary_egid
+# from egid_to_xml import egid_to_xml
+# from egid_evaluate_CJP import evaluate_egid
+# from egid_summary_CJP import summary_egid
 from optparse import OptionParser
 import os
 from shutil import copyfile
@@ -69,7 +69,7 @@ def makePlots(sigTTree, bkgTTree,outputdir,subdir=""):
     # leg.AddEntry(gPad.GetListOfPrimitives().At(1),"Background")    
     leg.Draw("same")
     # if "hoe" in var:
-    #   c.SetLogy()
+    c.SetLogy()
     c.SaveAs(outputdir_+var+".png")
     c.SaveAs(outputdir_+var+".pdf")
     counter+=1
@@ -124,8 +124,7 @@ def main():
   eos = "/eos/user/p/pmeiring/www/L1Trigger/l1eg/BDTs/"
   php = "/eos/user/p/pmeiring/www/L1Trigger/00_index.php"
   v = 123
-  subdir = "MyBDT_%s_20211210/"%v
-  # subdir = "MyBDT_newPtRangesBugfix_87/"
+  subdir = "MyBDT_%s_20220606/"%v
   outputdir = eos+subdir
 
   # Create output eos directory
@@ -157,13 +156,10 @@ def main():
   # Loop over BDT input variable sets
   for varset in opt.bdts.split(","):
     opt.bdtConfig=varset
-    # Train the BDT
-    # if varset=='allvars_trk2_best9':
-      # opt.trainParams='max_depth:3'
-    # else:
-      # opt.trainParams='max_depth:6'
 
+    # Train the BDT
     if '1' in opt.step: train_egid(opt, egid_vars, eta_regions, f_sig=file_sig, f_bkg=file_bkg, out=outputdir)
+
     # Convert the .model to .xml
     if '2' in opt.step: egid_to_xml(opt, egid_vars, eta_regions, out=outputdir)
 

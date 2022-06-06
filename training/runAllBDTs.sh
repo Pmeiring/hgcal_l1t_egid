@@ -11,4 +11,4 @@
 # python egid_fullProcedureBDT.py --bdts allvars_trk2,allvars_trk2_best9 --ptBin high --etaBin low --step 1
 
 # python egid_fullProcedureBDT.py --bdts allAvailVars --trainParams "max_depth:6,gamma:0.0" --ptBin high --etaBin low --step 1
-python egid_fullProcedureBDT.py --bdts allAvailVars_best3cl_alltrk --trainParams "max_depth:6,gamma:0.0" --ptBin high --etaBin low --step 1
+python egid_fullProcedureBDT.py --bdts allAvailVars_best3cl_alltrk --trainParams "max_depth:3,gamma:0.0" --ptBin high --etaBin low --step 01
