@@ -31,15 +31,15 @@ from optparse import OptionParser
 # Function to convert model into xml
 def egid_to_xml(opt, egid_vars, eta_regions, out):
 
-  print "~~~~~~~~~~~~~~~~~~~~~~~~ egid TO XML ~~~~~~~~~~~~~~~~~~~~~~~~"
+  print( "~~~~~~~~~~~~~~~~~~~~~~~~ egid TO XML ~~~~~~~~~~~~~~~~~~~~~~~~")
 
   #Define BDT name
   bdt_name = opt.bdtConfig
 
   # Check if input vars for BDT name are defined
   if not bdt_name in egid_vars: 
-    print " --> [ERROR] Input variables for BDT %s are not defined. Add key to egid_vars dict. Leaving..."%bdt_name
-    print "~~~~~~~~~~~~~~~~~~~~~ egid TO XML (END) ~~~~~~~~~~~~~~~~~~~~~"
+    print( " --> [ERROR] Input variables for BDT %s are not defined. Add key to egid_vars dict. Leaving..."%bdt_name)
+    print( "~~~~~~~~~~~~~~~~~~~~~ egid TO XML (END) ~~~~~~~~~~~~~~~~~~~~~")
     sys.exit(1)
 
   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -49,11 +49,11 @@ def egid_to_xml(opt, egid_vars, eta_regions, out):
 
     # Check if model exists
     if not os.path.exists("%s/BDT_%s/egid_%s_%s_%seta_%s.model"%(out,bdt_name,bdt_name,opt.clusteringAlgo,reg,opt.ptBin)):
-      print " --> [ERROR] No model exists for this BDT: %s/BDT_%s/egid_%s_%s_%seta_%s.model. Train first! Leaving..."%(out,bdt_name,bdt_name,opt.clusteringAlgo,reg,opt.ptBin)
-      print "~~~~~~~~~~~~~~~~~~~~~ egid TRAINING (END) ~~~~~~~~~~~~~~~~~~~~~"
+      print( " --> [ERROR] No model exists for this BDT: %s/BDT_%s/egid_%s_%s_%seta_%s.model. Train first! Leaving..."%(out,bdt_name,bdt_name,opt.clusteringAlgo,reg,opt.ptBin))
+      print( "~~~~~~~~~~~~~~~~~~~~~ egid TRAINING (END) ~~~~~~~~~~~~~~~~~~~~~")
       sys.exit(1)
   
-    print " --> Loading model for %s eta region: %s/BDT_%s/egid_%s_%s_%seta_%s.model"%(reg,out,bdt_name,bdt_name,opt.clusteringAlgo,reg,opt.ptBin)    
+    print( " --> Loading model for %s eta region: %s/BDT_%s/egid_%s_%s_%seta_%s.model"%(reg,out,bdt_name,bdt_name,opt.clusteringAlgo,reg,opt.ptBin)    )
     egid = xg.Booster()
     egid.load_model( "%s/BDT_%s/egid_%s_%s_%seta_%s.model"%(out,bdt_name,bdt_name,opt.clusteringAlgo,reg,opt.ptBin)   )
  
@@ -64,13 +64,13 @@ def egid_to_xml(opt, egid_vars, eta_regions, out):
     from mlglue.tree import tree_to_tmva, BDTxgboost, BDTsklearn
     target_names = ['background','signal']
     # FIXME: add options for saving BDT with user specified hyperparams
-    bdt = BDTxgboost( egid, egid_vars[bdt_name], target_names, kind='binary', max_depth=6, learning_rate=0.3 )
+    bdt = BDTxgboost( egid, egid_vars[bdt_name], target_names, kind='binary', max_depth=4, learning_rate=0.3 )
     bdt.to_tmva( f_xml )
 
-    print " --> Converted to xml: %s/BDT_%s/egid_%s_%s_%seta_%s.xml"%(out,bdt_name,bdt_name,opt.clusteringAlgo,reg,opt.ptBin)
+    print( " --> Converted to xml: %s/BDT_%s/egid_%s_%s_%seta_%s.xml"%(out,bdt_name,bdt_name,opt.clusteringAlgo,reg,opt.ptBin))
   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # END OF LOOP OVER ETA REGIONS
-  print "~~~~~~~~~~~~~~~~~~~~~ egid TO XML (END) ~~~~~~~~~~~~~~~~~~~~~"
+  print( "~~~~~~~~~~~~~~~~~~~~~ egid TO XML (END) ~~~~~~~~~~~~~~~~~~~~~")
 # END OF TO_XML FILE
 
 # Main function for running program

@@ -21,7 +21,11 @@ from optparse import OptionParser
 import seaborn as sns
 import joblib
 from itertools import compress
+import utils.correlator_common as cc
 # from egid_fullProcedureBDT import egid_vars
+import shap
+
+print (cc.makePtFromFloat(20.333))
 
 
 #Function to train xgboost model for HGCal L1T egid
@@ -106,6 +110,20 @@ def train_egid(opt, egid_vars, eta_regions, f_sig, f_bkg, out):
   # joblib.dump(trainTotal, "./frames/%s.pkl"%bdt_name)
   # pd.to_picle( trainTotal, "./frames/%s.pkl"%bdt_name )
 
+    #### QUANTIZE THE DATA
+    # ['hoe','tkpt','srrtot','deta','dpt','meanz','dphi','tkchi2','tkz0','tknstubs']
+  # trainTotal['hoe'] =   trainTotal['hoe'].map(lambda element: cc.makeHoe(element))
+  # trainTotal['tkpt'] =  trainTotal['tkpt'].map(lambda element: cc.makePtFromFloat(element))
+  # trainTotal['srrtot']= trainTotal['srrtot'].map(lambda element: cc.makeSrrTot(element))
+  # trainTotal['deta'] =  trainTotal['deta'].map(lambda element: cc.makeEta(element))
+  # trainTotal['dpt'] =   trainTotal['dpt'].map(lambda element: cc.makeDPtFromFloat(element))
+  # trainTotal['meanz'] = trainTotal['meanz'].map(lambda element: cc.makeMeanZ(element))
+  # trainTotal['dphi'] =  trainTotal['dphi'].map(lambda element: cc.makePhi(element))
+  # trainTotal['tkchi2'] =trainTotal['tkchi2'].map(lambda element: cc.makeChi2(element))
+  # trainTotal['tkz0'] =  trainTotal['tkz0'].map(lambda element: cc.makeZ0(element))
+  # print ("trainTotal: \n{}".format(trainTotal))
+
+
   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # TRAIN MODEL: loop over different eta regions
   print ("")
@@ -158,17 +176,31 @@ def train_egid(opt, egid_vars, eta_regions, f_sig, f_bkg, out):
     scaler = MinMaxScaler()
     print(scaler.fit(egid_train_X))
     egid_train_X_scaled=scaler.transform(egid_train_X)
-    egid_train_X=egid_train_X_scaled
 
-    print(scaler.fit(egid_valid_X))
-    egid_valid_X_scaled=scaler.transform(egid_valid_X)
-    egid_valid_X=egid_valid_X_scaled
+    # print(scaler.get_params())
+    print(egid_train_X)
+    # print(egid_train_X_scaled)
+    for f in range(len(egid_vars[bdt_name])):
+        feature_name=egid_vars[bdt_name][f]
+        min_=0
+        max_=1
+        feature_vals= egid_train_X[:,f]
+        feature_std = (feature_vals-feature_vals.min()) / (feature_vals.max()-feature_vals.min())
+        feature_scld= feature_std * (max_-min_) + min_
+        # Checked that feature_scld=egid_train_X_scaled
+        print(feature_name,feature_vals.min(),feature_vals.max())
+
+    # egid_train_X=egid_train_X_scaled
+    # print(scaler.fit(egid_valid_X))
+    # egid_valid_X_scaled=scaler.transform(egid_valid_X)
+    # egid_valid_X=egid_valid_X_scaled
 
     # Save plots
     for f in range(len(egid_vars[bdt_name])):
         feature=egid_vars[bdt_name][f]
         print(feature)
-        feature_values=[obj[f] for obj in egid_train_X_scaled]
+        feature_values=[obj[f] for obj in egid_train_X]
+        # feature_values=[obj[f] for obj in egid_train_X_scaled]
         feature_values_sig=list(compress(feature_values, egid_train_y))
         egid_train_y_flip=[not elem for elem in egid_train_y]
         feature_values_bkg=list(compress(feature_values, egid_train_y_flip))
@@ -177,7 +209,7 @@ def train_egid(opt, egid_vars, eta_regions, f_sig, f_bkg, out):
         plt.hist(feature_values_sig,alpha=0.5,bins=50,range=(0,1),label="signal")
         plt.yscale('log')
         plt.legend(loc='upper right')
-        plt.savefig('%s/BDT_%s/%s.png'%(out,bdt_name,feature))
+        # plt.savefig('%s/BDT_%s/%s.png'%(out,bdt_name,feature))
         plt.clf()
 
     np.save( '%s/BDT_%s/egid_train_X.npy'%(out,bdt_name), egid_train_X)
@@ -250,6 +282,28 @@ def train_egid(opt, egid_vars, eta_regions, f_sig, f_bkg, out):
     plt.ylabel( 'Feature', fontsize = 22 )
     plt.savefig( '%s/BDT_%s/feature_importance_egid_gain_%s_%s_%s_%s.pdf'%(out,bdt_name,bdt_name,opt.clusteringAlgo,reg,opt.ptBin ))
     plt.savefig( '%s/BDT_%s/feature_importance_egid_gain_%s_%s_%s_%s.png'%(out,bdt_name,bdt_name,opt.clusteringAlgo,reg,opt.ptBin ))
+    plt.clf()
+
+    # Feature importance: Shapley values
+    XD=training_egid
+    XD.shape=[theShape,len(egid_vars[bdt_name])]
+    explainer = shap.TreeExplainer(egid)
+    shap_values = explainer(XD)
+    shap_values.data=egid_train_X
+    shap_values.feature_names=egid_vars[bdt_name]
+
+    shap.plots.beeswarm(shap_values, max_display=27)
+    plt.gcf().subplots_adjust( left = 0.3 )
+    plt.grid(True)
+    plt.savefig( '%s/BDT_%s/feature_importance_egid_shap_%s_%s_%s_%s.pdf'%(out,bdt_name,bdt_name,opt.clusteringAlgo,reg,opt.ptBin ))
+    plt.savefig( '%s/BDT_%s/feature_importance_egid_shap_%s_%s_%s_%s.png'%(out,bdt_name,bdt_name,opt.clusteringAlgo,reg,opt.ptBin ))
+    plt.clf()
+    
+    shap.plots.bar(shap_values.abs.mean(0), max_display=27)
+    plt.gcf().subplots_adjust( left = 0.3 )
+    plt.grid(True)
+    plt.savefig( '%s/BDT_%s/feature_importance_egid_shapbar_%s_%s_%s_%s.pdf'%(out,bdt_name,bdt_name,opt.clusteringAlgo,reg,opt.ptBin ))
+    plt.savefig( '%s/BDT_%s/feature_importance_egid_shapbar_%s_%s_%s_%s.png'%(out,bdt_name,bdt_name,opt.clusteringAlgo,reg,opt.ptBin ))
     plt.clf()
 
     # Correlation matrix

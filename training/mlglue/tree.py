@@ -197,7 +197,9 @@ def xgbtree_to_nodetree(tree):
             nodes[node_index] = Tree(node_index, [], my_parent, node_depth, ("val", val))
 
         #insert node into final node dict
-        if nodes.has_key(my_parent):
+        # print (nodes)
+        # if nodes.has_key(my_parent):
+        if my_parent in nodes:
             nodes[my_parent].children += [node_index]
 
         prev_depth = node_depth
@@ -390,7 +392,7 @@ class BDTxgboost(BDT):
                 kind = "multiclass"
             else:
                 kind = "regression"
-            print model.objective, kind
+            # print model.objective, kind
        
         if not max_depth:
             max_depth = model.max_depth

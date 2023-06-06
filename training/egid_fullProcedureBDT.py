@@ -1,7 +1,8 @@
 from egid_training_CJP import train_egid
-# from egid_to_xml import egid_to_xml
-# from egid_evaluate_CJP import evaluate_egid
-# from egid_summary_CJP import summary_egid
+from egid_to_xml import egid_to_xml
+from egid_evaluate_CJP import evaluate_egid
+from egid_summary_CJP import summary_egid
+from egid_evaluate_singleCandidate import evaluate_egid_single
 from optparse import OptionParser
 import os
 from shutil import copyfile
@@ -111,7 +112,14 @@ egid_vars = {"basic":['coreshowerlength','firstlayer','maxlayer','srrmean'],
              # 'best9_loweta_red': ['srrtot', 'ntc67', 'ntc90', 'hoe', 'seetot', 'coreshowerlength','srrmean', 'srrmax', 'emaxe'],
              # 'best9_higheta_red':['ntc67', 'ntc90', 'srrtot', 'hoe', 'spptot', 'sppmax', 'seetot', 'emaxe', 'layer10'],
              'allAvailVars':               ['hoe','tkpt','srrtot','deta','dpt','meanz','dphi','tkchi2','spptot','tkz0','seetot','showerlength','coreshowerlength','firstlayer','szz','tknstubs'],
-             'allAvailVars_best3cl_alltrk':['hoe','tkpt','srrtot','deta','dpt','meanz','dphi','tkchi2','tkz0','tknstubs']
+             'allAvailVars_best3cl_alltrk':['hoe','tkpt','srrtot','deta','dpt','meanz','dphi','tkchi2','tkz0','tknstubs'],
+             'allAvailVars_best3cl_alltrk2':['hoe','tkpt','srrtot','deta'],
+             'allAvailVars_best3cl_alltrk_lowpt':['coreshowerlength','tkpt','srrtot','deta','dpt','meanz','dphi','tkchi2','tkz0','tknstubs'],
+             'allAvailVars_best3cl_alltrk_lowpt2':['coreshowerlength','hoe','tkpt','srrtot','deta','dpt','meanz','dphi','tkchi2','tkz0','tknstubs'],
+             'emulator':['tkChi2','tkpt','tkz0','hoe','srrtot','deta','dphi','dpt','meanz','nstubs','chi2rphi','chi2rz','ch2bend'],
+             'emulator2':['tkpt','hoe','srrtot','deta','dphi','dpt','meanz','nstubs','chi2rphi','chi2rz','ch2bend'],
+             'emulator_allpt':['tkpt','hoe','srrtot','deta','dphi','dpt','meanz','nstubs','chi2rphi','chi2rz','ch2bend'],
+             'emulator_12p5':['tkpt','hoe','srrtot','deta','dphi','dpt','meanz','nstubs','chi2rphi','chi2rz','ch2bend'],
             }
 
 eta_range={
@@ -123,8 +131,11 @@ def main():
   (opt,args) = get_options()
   eos = "/eos/user/p/pmeiring/www/L1Trigger/l1eg/BDTs/"
   php = "/eos/user/p/pmeiring/www/L1Trigger/00_index.php"
-  v = 123
-  subdir = "MyBDT_%s_20220606/"%v
+  v = "1"
+  # subdir = "MyBDT_%s_20211210/"%v
+  # subdir = "MyBDT_%s_20230315_depth4_nonorm_shap/"%v
+  # subdir = "MyBDT_emulated_20230331_v12p5samples/"
+  subdir = "MyBDT_emulated_20230331_638pm/"
   outputdir = eos+subdir
 
   # Create output eos directory
@@ -140,8 +151,17 @@ def main():
   eta_regions = {"low":[1.5,2.7]} if opt.etaBin=='low' else {"high":[2.7,3.0]}
 
   # Give paths to input files (separate for low pT bin, and separate for eta range)
-  file_sig = "/eos/user/p/pmeiring/www/L1Trigger/l1eg/histos_matching/histos_ele_flat2to100_PU200_HLTTDR_eg_v%s%s_%s_BDT.root"%(v,opt.ptBin,eta_range[opt.etaBin])
-  file_bkg = "/eos/user/p/pmeiring/www/L1Trigger/l1eg/histos_matching/histos_minbias_PU200_HLTTDR_eg_v%s%s_%s_BDT.root"%(v,opt.ptBin,eta_range[opt.etaBin])
+  # file_sig = "/eos/user/p/pmeiring/www/L1Trigger/l1eg/histos_matching/histos_ele_flat2to100_PU200_HLTTDR_tkE_eg_v230105_1.3high_1p5eta2p7_BDT.root"
+  # file_bkg = "/eos/user/p/pmeiring/www/L1Trigger/l1eg/histos_matching/histos_minbias_PU200_HLTTDR_tkE_eg_v230105_2.3high_1p5eta2p7_BDT.root"
+
+  file_bkg = "/eos/user/p/pmeiring/www/L1Trigger/l1eg/histos_matching/histos_minbias_PU200_HLTTDR_tkE_eg_v230331_floattohw.3high_1p5eta2p7_BDT.root"
+  file_sig = "/eos/user/p/pmeiring/www/L1Trigger/l1eg/histos_matching/histos_ele_flat2to100_PU200_HLTTDR_tkE_eg_v230331_floattohw.3high_1p5eta2p7_BDT.root"
+
+  # file_sig = "/eos/user/p/pmeiring/www/L1Trigger/l1eg/histos_matching/histos_ele_flat2to100_PU200_HLTTDR_eg_v%s%s_%s_BDT.root"%(v,opt.ptBin,eta_range[opt.etaBin])
+  # file_bkg = "/eos/user/p/pmeiring/www/L1Trigger/l1eg/histos_matching/histos_minbias_PU200_HLTTDR_eg_v%s%s_%s_BDT.root"%(v,opt.ptBin,eta_range[opt.etaBin])
+  # file_sig = "/eos/user/p/pmeiring/www/L1Trigger/l1eg/histos_matching/histos_ele_flat2to100_PU200_HLTTDR_eg_v%s%s_%s_BDT_pt10.root"%(v,opt.ptBin,eta_range[opt.etaBin])
+  # file_bkg = "/eos/user/p/pmeiring/www/L1Trigger/l1eg/histos_matching/histos_minbias_PU200_HLTTDR_eg_v%s%s_%s_BDT_pt10.root"%(v,opt.ptBin,eta_range[opt.etaBin])
+
 
   # Open the files and mount the trees
   f_sig=TFile.Open(file_sig)
@@ -165,6 +185,7 @@ def main():
 
   # Evaluate the clusters with the trained BDTs
   if '3' in opt.step: evaluate_egid(opt, egid_vars, eta_regions, f_sig=file_sig, f_bkg=file_bkg, out=outputdir)
+  if 'single' in opt.step: evaluate_egid_single(opt, egid_vars, eta_regions, f_sig=file_sig, f_bkg=file_bkg, out=outputdir)
 
   # opt.bdts=opt.bdts+",tpg"
   # Make a summary of BDT performance

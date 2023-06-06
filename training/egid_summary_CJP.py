@@ -22,10 +22,11 @@ import sys
 from array import array
 
 # HARDCODED: working points would like to output
-working_points = [0.995,0.975,0.95,0.9,0.8,0.7,0.6]
+# working_points = [0.995,0.975,0.95,0.9,0.8,0.7,0.65,0.6,0.55,0.5,0.45,0.4]
+working_points = [0.995,0.98,0.975,0.97,0.965,0.96,0.955,0.95,0.94,0.93,0.92,0.91,0.9,0.8,0.7,0.65,0.6,0.55,0.5,0.45,0.4]
 
 def leave():
-  print "~~~~~~~~~~~~~~~~~~~~~ egid SUMMARY (END) ~~~~~~~~~~~~~~~~~~~~~"
+  print ( "~~~~~~~~~~~~~~~~~~~~~ egid SUMMARY (END) ~~~~~~~~~~~~~~~~~~~~~")
   sys.exit(1)
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -39,7 +40,7 @@ def summary_egid(opt, egid_vars, eta_regions, out):
   treeMap = {"signal":"sig_%s"%opt.dataset,"background":"bkg_%s"%opt.dataset}
 
 
-  print "~~~~~~~~~~~~~~~~~~~~~~~~ egid SUMMARY ~~~~~~~~~~~~~~~~~~~~~~~~"
+  print ( "~~~~~~~~~~~~~~~~~~~~~~~~ egid SUMMARY ~~~~~~~~~~~~~~~~~~~~~~~~")
 
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # CONFIGURE INPUTS
@@ -48,7 +49,7 @@ def summary_egid(opt, egid_vars, eta_regions, out):
   info = {}
   _i = opt.inputMap.split(",")
   if len(_i)!=4:
-    print " --> [ERROR] Incorrect number of input elements. Please use format: <signalType>,<backgroundType>,<clustering Algo.>,<dataset [test,train,all]>"
+    print ( " --> [ERROR] Incorrect number of input elements. Please use format: <signalType>,<backgroundType>,<clustering Algo.>,<dataset [test,train,all]>")
     leave()
   info['signal'] = _i[0]
   info['background'] = _i[1]
@@ -69,7 +70,7 @@ def summary_egid(opt, egid_vars, eta_regions, out):
     i+=1
   #Check there is atleast one input bdt
   if len(bdt_list) == 0:
-    print " --> [ERROR] No input BDT. Leaving..."
+    print ( " --> [ERROR] No input BDT. Leaving...")
     leave()
 
   # Define variables to store in dataFrame
@@ -86,7 +87,7 @@ def summary_egid(opt, egid_vars, eta_regions, out):
     # fpath = "%s/%s_%s_%s_eval_%s.root"%(out,proc,opt.clusteringAlgo,opt.dataset,opt.ptBin)
     fpath = "%s/%s_%s_%s_eval_%seta_%spt.root"%(out,proc,opt.clusteringAlgo,opt.dataset,opt.etaBin,opt.ptBin)
     # if not os.path.exists( fpath ):
-    #   print " --> [ERROR] Input %s ntuple does not exists: %s. Please run egid_evaluate first! Leaving..."%(proc,get_path(info,proc))
+    #   print ( " --> [ERROR] Input %s ntuple does not exists: %s. Please run egid_evaluate first! Leaving..."%(proc,get_path(info,proc)))
     #   leave()
     iFile = ROOT.TFile( fpath )
     iTree = iFile.Get( treeMap[ proc ] )
@@ -113,10 +114,13 @@ def summary_egid(opt, egid_vars, eta_regions, out):
     frames[proc]['proc'] = proc
     # frames[proc]['type'] = info[proc]
 
-  print " --> Extracted dataframes signal and background input ntuples"
+  print ( " --> Extracted dataframes signal and background input ntuples")
   # Make one combined dataFrame
   frames_list = [frames["signal"].append(frames["background"])]
   frameTotal = pd.concat( frames_list, sort=False )
+
+  label_encoder = LabelEncoder()
+  AUC={}
 
   # Split into eta regions
   frames_splitByEta = {}
@@ -124,8 +128,17 @@ def summary_egid(opt, egid_vars, eta_regions, out):
     frames_splitByEta[reg] = frameTotal[ abs(frameTotal['cl3d_eta']) > eta_regions[reg][0] ]
     frames_splitByEta[reg] = frames_splitByEta[reg][ abs(frames_splitByEta[reg]['cl3d_eta']) <= eta_regions[reg][1] ]
 
-  print " --> Dataframes split into eta regions"
-  print frames_splitByEta
+    my_true_y = label_encoder.fit_transform( frames_splitByEta[reg]['proc'].values )
+    my_pred_y = frames_splitByEta[reg]['cl3d_bdt_%s'%b].values
+    AUC_ = roc_auc_score( my_true_y, my_pred_y )
+    print (AUC)
+    print (my_true_y)
+    print (my_pred_y)
+    AUC[b]=AUC_
+  # roc_auc_score( egid_train_y, egid_train_predy ))
+
+  print ( " --> Dataframes split into eta regions")
+  print ( frames_splitByEta)
 
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # DEFINE DICTS TO STORE EFFS FOR EACH BDT
@@ -133,22 +146,23 @@ def summary_egid(opt, egid_vars, eta_regions, out):
   eff_background = {}
   bdt_points = {}
   wp_idx = {}
-
+  myscores = {}
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # LOOP OVER BDTS CONFIGS
   for b in bdt_list:
 
-    print " --> Calculating efficiencies for BDT: %s"%b
+    print ( " --> Calculating efficiencies for BDT: %s"%b)
 
     # sort frame according to BDT score
     if "tpg" in b: bdt_var = "cl3d_bdt_tpg"
     else: bdt_var = "cl3d_bdt_%s"%b
 
     # Loop over eta regions
-    for reg, fr in frames_splitByEta.iteritems():
+    for reg, fr in frames_splitByEta.items():
 
       # Sort frame
       fr = fr.sort_values(bdt_var)
+
 
       # Create key name
       key = "%s_%s"%(b,reg) 
@@ -166,7 +180,7 @@ def summary_egid(opt, egid_vars, eta_regions, out):
       N_sig_running, N_bkg_running = 0., 0.
       for index, row in fr.iterrows():
         # Add one to running counters depending on proc
-        # print row['proc']
+        # print ( row['proc'])
 
         if row['proc'] == 'signal': N_sig_running += 1.
         elif row['proc'] == 'background': N_bkg_running += 1.
@@ -181,9 +195,11 @@ def summary_egid(opt, egid_vars, eta_regions, out):
         eff_signal[key].append( eff_s )
         eff_background[key].append( eff_b )
 
-      # print bdt_points
-      # print eff_signal
-      # print eff_background
+      # for score in [-0.998,-0.996]:
+      #   sigeff=float(len(fr[(fr['proc']=='signal') & (fr['cl3d_bdt_emulator_allpt']>=score)])) / float(len(fr[fr['proc']=='signal']))
+      #   bkgeff=float(len(fr[(fr['proc']=='background') & (fr['cl3d_bdt_emulator_allpt']>=score)])) / float(len(fr[fr['proc']=='background']))
+      #   print (score, sigeff, bkgeff)
+      #   myscores[score]=[sigeff,bkgeff]
 
       # Convert lists into numpy arrays
       bdt_points[key] = np.asarray(bdt_points[key])
@@ -192,31 +208,31 @@ def summary_egid(opt, egid_vars, eta_regions, out):
 
       # Extract indices of working points
       for wp in working_points: wp_idx[key].append( abs((eff_signal[key]-wp)).argmin() )
-      print " --> Extracted working points for BDT: %s, eta_region = %s"%(b,reg)
+      print ( " --> Extracted working points for BDT: %s, eta_region = %s"%(b,reg))
 
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  # PRINT INFO TO USER
-  # print " ~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~"  
-  # print " --> INPUT: * signal          = %s"%info['signal']
-  # print "            * background      = %s"%info['background']
-  # print "            * cl3d_algo       = %s"%info['cl3d_algo']
-  # print "            * dataset         = %s"%info['dataset']
-  print " ~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~"  
-  print ""
-  print "   ~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~>,~.,~.,~.,~"
+  # PRINT ( INFO TO USER)
+  # print ( " ~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~"  )
+  # print ( " --> INPUT: * signal          = %s"%info['signal'])
+  # print ( "            * background      = %s"%info['background'])
+  # print ( "            * cl3d_algo       = %s"%info['cl3d_algo'])
+  # print ( "            * dataset         = %s"%info['dataset'])
+  print ( " ~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~*~"  )
+  print ( "")
+  print ( "   ~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~>,~.,~.,~.,~")
   for b in bdt_list:
-    print "   --> BDT:   * discriminator = %s"%("_".join(b.split("_")[:-1]))
-    print "              * config        = %s"%b.split("_")[-1]
+    print ( "   --> BDT:   * discriminator = %s"%("_".join(b.split("_")[:-1])))
+    print ( "              * config        = %s"%b.split("_")[-1])
     for reg in eta_regions:
       key = "%s_%s"%(b,reg)
-      print ""
-      print "   --> Eta region: %s --> %.2f < |eta| < %.2f"%(reg,eta_regions[reg][0],eta_regions[reg][1])
-      print "      --> Working points:"
+      print ( "")
+      print ( "   --> Eta region: %s --> %.2f < |eta| < %.2f"%(reg,eta_regions[reg][0],eta_regions[reg][1]))
+      print ( "      --> Working points:")
       for wp_itr in range(len(working_points)):
         wp = working_points[wp_itr]
-        print "                  * At epsilon_s = %4.3f ::: BDT cut = %8.7f, epsilon_b = %5.4f"%(wp,bdt_points[key][wp_idx[key][wp_itr]],eff_background[key][wp_idx[key][wp_itr]])
+        print ( "                  * At epsilon_s = %4.3f ::: BDT cut = %8.7f, epsilon_b = %5.4f"%(wp,bdt_points[key][wp_idx[key][wp_itr]],eff_background[key][wp_idx[key][wp_itr]]))
     
-    print "   ~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~>,~.,~.,~.,~"
+    print ( "   ~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~.,~>,~.,~.,~.,~")
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # SAVE WORKING POINTS TO TXT FILE
   # only save if signal and background match what was used to train BDT
@@ -224,7 +240,7 @@ def summary_egid(opt, egid_vars, eta_regions, out):
   for b in bdt_list:
 
     # if( info['signal'] in b )&( info['background'] in b ):
-    print " --> Saving working points to .txt files: %s"%b
+    print ( " --> Saving working points to .txt files: %s"%b)
     for reg in eta_regions:
       f_out = open("%s/_Summary/%s_%seta_%s_wp.txt"%(out,b,reg,opt.ptBin),"w")
       f_out.write("Working Points: %s\n"%b)
@@ -239,33 +255,42 @@ def summary_egid(opt, egid_vars, eta_regions, out):
   # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   # PLOT ROC CURVES
   if opt.outputROC:
-    print " --> Plotting ROC curves"
+    print ( " --> Plotting ROC curves")
     # Plot high and low eta regions separately
     plt_itr = 1
     for reg in eta_regions:
+      plt.rcParams.update({'font.size': 22})
       plt.figure(plt_itr)
       for b in bdt_list:
         key = "%s_%s"%(b,reg)
-        _label = b
+        # _label = "Composite ID (low $p_{T})$" if (b=="allvars_trk2" and opt.ptBin=="low") else "Composite ID (high $p_{T}$)" if (b=="allvars_trk2" and opt.ptBin=="high") else "Stand-alone ID" if b=="tpg" else b
+        _label = "AUC: %.4f"%AUC[b]
         plt.plot( eff_signal[key], 1-eff_background[key], label=_label, color=bdt_colours[b] )
+        for isc,score in enumerate(myscores):
+          plt.plot(myscores[score][0], 1-myscores[score][1], 'co' if isc==0 else 'go', label='score=%f'%score)
+
+
       plt.xlabel('Signal Eff. ($\epsilon_s$)')
       plt.ylabel('1 - Background Eff. ($1-\epsilon_b$)')
-      plt.title('%.2f$ < |\eta| < $%.2f'%(eta_regions[reg][0],eta_regions[reg][1]))
+      # plt.title('%.2f$ < |\eta| < $%.2f'%(eta_regions[reg][0],eta_regions[reg][1]))
       plt.grid(True)
       axes = plt.gca()
       axes.set_xlim([0.0,1.1])
       axes.set_ylim([0.0,1.1])
+      axes.set_aspect("equal")
+      fig=plt.gcf()
+      fig.set_size_inches(8,8)
       plt.legend(bbox_to_anchor=(0.05,0.1), loc='lower left')
-      plt.savefig( "%s/_Summary/ROC_%seta_%s.png"%(out,reg,opt.ptBin) )
-      plt.savefig( "%s/_Summary/ROC_%seta_%s.pdf"%(out,reg,opt.ptBin) )
+      plt.savefig( "%s/_Summary/ROC_%seta_%s_emulator2.png"%(out,reg,opt.ptBin) )
+      plt.savefig( "%s/_Summary/ROC_%seta_%s_emulator2.pdf"%(out,reg,opt.ptBin) )
       axes.set_ylim([0.8,1.04])
       axes.set_xlim([0.8,1.04])
       plt.legend(bbox_to_anchor=(0.05,0.1), loc='lower left')
-      plt.savefig( "%s/_Summary/ROC_%seta_%s_zoom.png"%(out,reg,opt.ptBin) )
-      plt.savefig( "%s/_Summary/ROC_%seta_%s_zoom.pdf"%(out,reg,opt.ptBin) )
+      plt.savefig( "%s/_Summary/ROC_%seta_%s_zoom_emulator2.png"%(out,reg,opt.ptBin) )
+      plt.savefig( "%s/_Summary/ROC_%seta_%s_zoom_emulator2.pdf"%(out,reg,opt.ptBin) )
 
       plt_itr += 1
-      # print " --> Saved plot: %s/plotting/plots/ROC_%seta_%s.(png/pdf)"%(os.environ['HGCAL_L1T_BASE'],reg,opt.ptBin)
+      # print ( " --> Saved plot: %s/plotting/plots/ROC_%seta_%s.(png/pdf)"%(os.environ['HGCAL_L1T_BASE'],reg,opt.ptBin))
       
   # leave()
 # END OF SUMMARY FUNCTION
