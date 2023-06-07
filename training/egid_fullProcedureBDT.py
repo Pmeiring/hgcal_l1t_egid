@@ -28,48 +28,18 @@ def makePlots(sigTTree, bkgTTree,outputdir,subdir=""):
     leg = TLegend(0.65,0.65,0.88,0.88)
     var=key.GetName()
 
-    # if "tkpt" in var:
-    #   sigTTree.Draw("%s>>dummy%s(100,0,100)"%(var,counter),"","histnorm")
-    # else:
-    #   sigTTree.Draw("%s>>dummy%s"%(var,counter),"","histnorm")
-    # if "dpt" in var:
-    #   sigTTree.Draw("%s>>dummy%s(100,0,2)"%(var,counter),"","histnorm")
-    # else:
-    #   sigTTree.Draw("%s>>dummy%s"%(var,counter),"","histnorm")
-
-
     sigTTree.Draw("%s>>dummy%s"%(var,counter),"","histnorm")
     dummy=gDirectory.Get("dummy%s"%counter)
     dummy.SetLineColor(2)
     dummy.SetLineWidth(2)
     leg.AddEntry(dummy,"Signal")
 
-    # sigTTree.Draw(var,"","histnorm")
-    # gPad.GetListOfPrimitives().At(0).SetLineColor(2)
-    # gPad.GetListOfPrimitives().At(0).SetLineWidth(2)
-    # leg.AddEntry(gPad.GetListOfPrimitives().At(0),"Signal")
-    # htemp.SetLineColor(2)
-    # if var in bkgTTree.GetListOfBranches():
-    # if "tkpt" in var:
-    #   bkgTTree.Draw("%s>>dummybkg%s(100,0,100)"%(var,counter),"","samehistnorm")      
-    # else:
-    #   bkgTTree.Draw("%s>>dummybkg%s"%(var,counter),"","samehistnorm")
-    # if "dpt" in var:
-    #   bkgTTree.Draw("%s>>dummybkg%s(100,0,2)"%(var,counter),"","samehistnorm")      
-    # else:
-    #   bkgTTree.Draw("%s>>dummybkg%s"%(var,counter),"","samehistnorm")
-
     bkgTTree.Draw("%s>>dummybkg%s"%(var,counter),"","samehistnorm")
     dummy=gDirectory.Get("dummybkg%s"%counter)
     dummy.SetLineWidth(2)
     leg.AddEntry(dummy,"Background")
-
-
-    # bkgTTree.Draw(var,"","samehistnorm")
-    # gPad.GetListOfPrimitives().At(1).SetLineWidth(2)
-    # leg.AddEntry(gPad.GetListOfPrimitives().At(1),"Background")    
+ 
     leg.Draw("same")
-    # if "hoe" in var:
     c.SetLogy()
     c.SaveAs(outputdir_+var+".png")
     c.SaveAs(outputdir_+var+".pdf")
@@ -81,8 +51,6 @@ def makePlots(sigTTree, bkgTTree,outputdir,subdir=""):
 def get_options():
   parser = OptionParser()
   parser.add_option('--clusteringAlgo', dest='clusteringAlgo', default='Histomaxvardr', help="Clustering algorithm with which to optimise BDT" )
-  # parser.add_option('--signalType', dest='signalType', default='electron_200PU', help="Input signal type" )
-  # parser.add_option('--backgroundType', dest='backgroundType', default='neutrino_200PU', help="Input background type" )
   parser.add_option('--bdtConfig', dest='bdtConfig', default='full', help="BDT config (accepted values: baseline/full/extended)" )
   parser.add_option('--reweighting', dest='reweighting', default=1, type='int', help="Boolean to perform re-weighting of clusters to equalise signal and background [yes=1 (default), no=0]" )
   parser.add_option('--trainParams',dest='trainParams', default=None, help='Comma-separated list of colon-separated pairs corresponding to (hyper)parameters for the training')
@@ -109,8 +77,8 @@ egid_vars = {"basic":['coreshowerlength','firstlayer','maxlayer','srrmean'],
              'best9_higheta_lowpt':['seetot', 'layer90', 'meanz', 'hoe', 'ntc90', 'ntc67','spptot', 'layer10', 'emaxe'], 
              'allvars_red':['coreshowerlength','showerlength','firstlayer','maxlayer','szz','srrmean','srrtot','seetot','spptot', 'meanz', 'layer10', 'layer50', 'layer90', 'ntc67', 'ntc90'],
              'allvars_trk2_best9': ['tkpt','srrtot','dpt','hoe','ntc67','deta','tkchi2','dphi','layer50'],
-             # 'best9_loweta_red': ['srrtot', 'ntc67', 'ntc90', 'hoe', 'seetot', 'coreshowerlength','srrmean', 'srrmax', 'emaxe'],
-             # 'best9_higheta_red':['ntc67', 'ntc90', 'srrtot', 'hoe', 'spptot', 'sppmax', 'seetot', 'emaxe', 'layer10'],
+             'best9_loweta_red': ['srrtot', 'ntc67', 'ntc90', 'hoe', 'seetot', 'coreshowerlength','srrmean', 'srrmax', 'emaxe'],
+             'best9_higheta_red':['ntc67', 'ntc90', 'srrtot', 'hoe', 'spptot', 'sppmax', 'seetot', 'emaxe', 'layer10'],
              'allAvailVars':               ['hoe','tkpt','srrtot','deta','dpt','meanz','dphi','tkchi2','spptot','tkz0','seetot','showerlength','coreshowerlength','firstlayer','szz','tknstubs'],
              'allAvailVars_best3cl_alltrk':['hoe','tkpt','srrtot','deta','dpt','meanz','dphi','tkchi2','tkz0','tknstubs'],
              'allAvailVars_best3cl_alltrk2':['hoe','tkpt','srrtot','deta'],
@@ -131,11 +99,7 @@ def main():
   (opt,args) = get_options()
   eos = "/eos/user/p/pmeiring/www/L1Trigger/l1eg/BDTs/"
   php = "/eos/user/p/pmeiring/www/L1Trigger/00_index.php"
-  v = "1"
-  # subdir = "MyBDT_%s_20211210/"%v
-  # subdir = "MyBDT_%s_20230315_depth4_nonorm_shap/"%v
-  # subdir = "MyBDT_emulated_20230331_v12p5samples/"
-  subdir = "MyBDT_emulated_20230331_638pm/"
+  subdir = "MyBDT_emulated_20230607/"
   outputdir = eos+subdir
 
   # Create output eos directory
@@ -149,21 +113,10 @@ def main():
   copyfile(php,outputdir+"_Summary/index.php")
 
   eta_regions = {"low":[1.5,2.7]} if opt.etaBin=='low' else {"high":[2.7,3.0]}
-
-  # Give paths to input files (separate for low pT bin, and separate for eta range)
-  # file_sig = "/eos/user/p/pmeiring/www/L1Trigger/l1eg/histos_matching/histos_ele_flat2to100_PU200_HLTTDR_tkE_eg_v230105_1.3high_1p5eta2p7_BDT.root"
-  # file_bkg = "/eos/user/p/pmeiring/www/L1Trigger/l1eg/histos_matching/histos_minbias_PU200_HLTTDR_tkE_eg_v230105_2.3high_1p5eta2p7_BDT.root"
-
+  
+  # Open the files and mount the trees
   file_bkg = "/eos/user/p/pmeiring/www/L1Trigger/l1eg/histos_matching/histos_minbias_PU200_HLTTDR_tkE_eg_v230331_floattohw.3high_1p5eta2p7_BDT.root"
   file_sig = "/eos/user/p/pmeiring/www/L1Trigger/l1eg/histos_matching/histos_ele_flat2to100_PU200_HLTTDR_tkE_eg_v230331_floattohw.3high_1p5eta2p7_BDT.root"
-
-  # file_sig = "/eos/user/p/pmeiring/www/L1Trigger/l1eg/histos_matching/histos_ele_flat2to100_PU200_HLTTDR_eg_v%s%s_%s_BDT.root"%(v,opt.ptBin,eta_range[opt.etaBin])
-  # file_bkg = "/eos/user/p/pmeiring/www/L1Trigger/l1eg/histos_matching/histos_minbias_PU200_HLTTDR_eg_v%s%s_%s_BDT.root"%(v,opt.ptBin,eta_range[opt.etaBin])
-  # file_sig = "/eos/user/p/pmeiring/www/L1Trigger/l1eg/histos_matching/histos_ele_flat2to100_PU200_HLTTDR_eg_v%s%s_%s_BDT_pt10.root"%(v,opt.ptBin,eta_range[opt.etaBin])
-  # file_bkg = "/eos/user/p/pmeiring/www/L1Trigger/l1eg/histos_matching/histos_minbias_PU200_HLTTDR_eg_v%s%s_%s_BDT_pt10.root"%(v,opt.ptBin,eta_range[opt.etaBin])
-
-
-  # Open the files and mount the trees
   f_sig=TFile.Open(file_sig)
   f_bkg=TFile.Open(file_bkg)
   signal = f_sig.Get("sig_train")
@@ -185,9 +138,7 @@ def main():
 
   # Evaluate the clusters with the trained BDTs
   if '3' in opt.step: evaluate_egid(opt, egid_vars, eta_regions, f_sig=file_sig, f_bkg=file_bkg, out=outputdir)
-  if 'single' in opt.step: evaluate_egid_single(opt, egid_vars, eta_regions, f_sig=file_sig, f_bkg=file_bkg, out=outputdir)
 
-  # opt.bdts=opt.bdts+",tpg"
   # Make a summary of BDT performance
   if '4' in opt.step: summary_egid(opt, egid_vars, eta_regions, out=outputdir)
 

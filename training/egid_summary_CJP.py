@@ -281,13 +281,13 @@ def summary_egid(opt, egid_vars, eta_regions, out):
       fig=plt.gcf()
       fig.set_size_inches(8,8)
       plt.legend(bbox_to_anchor=(0.05,0.1), loc='lower left')
-      plt.savefig( "%s/_Summary/ROC_%seta_%s_emulator2.png"%(out,reg,opt.ptBin) )
-      plt.savefig( "%s/_Summary/ROC_%seta_%s_emulator2.pdf"%(out,reg,opt.ptBin) )
+      plt.savefig( "%s/_Summary/ROC_%seta_%s.png"%(out,reg,opt.ptBin) )
+      plt.savefig( "%s/_Summary/ROC_%seta_%s.pdf"%(out,reg,opt.ptBin) )
       axes.set_ylim([0.8,1.04])
       axes.set_xlim([0.8,1.04])
       plt.legend(bbox_to_anchor=(0.05,0.1), loc='lower left')
-      plt.savefig( "%s/_Summary/ROC_%seta_%s_zoom_emulator2.png"%(out,reg,opt.ptBin) )
-      plt.savefig( "%s/_Summary/ROC_%seta_%s_zoom_emulator2.pdf"%(out,reg,opt.ptBin) )
+      plt.savefig( "%s/_Summary/ROC_%seta_%s_zoom.png"%(out,reg,opt.ptBin) )
+      plt.savefig( "%s/_Summary/ROC_%seta_%s_zoom.pdf"%(out,reg,opt.ptBin) )
 
       plt_itr += 1
       # print ( " --> Saved plot: %s/plotting/plots/ROC_%seta_%s.(png/pdf)"%(os.environ['HGCAL_L1T_BASE'],reg,opt.ptBin))

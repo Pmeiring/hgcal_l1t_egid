@@ -35,13 +35,7 @@ def initialise_egid_BDT( in_xml, in_var_names ):
   bdt_.BookMVA( "BDT", in_xml )
   # return initialised BDT and input variables
   return bdt_, in_var
-
-# # Evaluation: calculates BDT score for 3D cluster taking bdt as input
-# def evaluate_egid_BDT( _bdt, _bdt_var, in_cl3d, in_var_names ):
-#   # Loop over input vars and extract values from tree
-#   for var in in_var_names: _bdt_var[var][0]=getattr( in_cl3d, "%s"%var ) 
-#   #return BDT score
-#   return _bdt.EvaluateMVA("BDT")
+  
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 norms_highpt = {
@@ -75,26 +69,20 @@ norms_lowpt = {
 def evaluate_egid_BDT(b, _bdt, _bdt_var, in_cl3d, in_var_names ):
 
   # Loop over input vars and extract values from tree  
-  norm = norms_lowpt if "_lowpt" in b else norms_highpt
-
   for var in in_var_names: 
-    if b=="allAvailVars_best3cl_alltrk":
-      if var=="tkchi2":
-        var_beforenorm = getattr( in_cl3d, "tkChi2" ) 
-      elif var=="tknstubs": 
-        var_beforenorm = getattr( in_cl3d, "nstubs")
-      else:
-        var_beforenorm = getattr( in_cl3d, "%s"%var ) 
-    else:
-      var_beforenorm = getattr( in_cl3d, "%s"%var ) 
+    var_beforenorm = getattr( in_cl3d, "%s"%var ) 
+    _bdt_var[var][0]=var_beforenorm
+
+    ##### Normalize the features
+    # norm = norms_lowpt if "_lowpt" in b else norms_highpt
     # min_ = norm[var][0]
     # max_ = norm[var][1]
     # var_afternorm  = (var_beforenorm-min_)/(max_-min_)
     # var_scaled = var_afternorm * (max_-min_) + min_
     # print var, var_beforenorm, var_afternorm, var_scaled
-
-    _bdt_var[var][0]=var_beforenorm
     # _bdt_var[var][0]=var_afternorm
+
+    ##### Quantize the features using python bindings    
     # if var=="hoe":_bdt_var[var][0]=cc.makeHoe(var_beforenorm)
     # if var=="tkpt":_bdt_var[var][0]=cc.makePtFromFloat(var_beforenorm)
     # if var=="srrtot":_bdt_var[var][0]=cc.makeSrrTot(var_beforenorm)
