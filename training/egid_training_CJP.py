@@ -21,11 +21,11 @@ from optparse import OptionParser
 import seaborn as sns
 import joblib
 from itertools import compress
-import utils.correlator_common as cc
+# import utils.correlator_common as cc
 # from egid_fullProcedureBDT import egid_vars
 import shap
 
-print (cc.makePtFromFloat(20.333))
+# print (cc.makePtFromFloat(20.333))
 
 
 #Function to train xgboost model for HGCal L1T egid

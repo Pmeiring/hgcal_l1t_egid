@@ -17,7 +17,7 @@ from os import path, system
 import os
 import sys
 from array import array
-import utils.correlator_common as cc
+# import utils.correlator_common as cc
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
